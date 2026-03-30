@@ -257,6 +257,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
     <div class="tab" data-tab="transfers">🔄 التحويلات</div>
     <div class="tab" data-tab="whatsapp">💬 واتساب</div>
     <div class="tab manager-only" data-tab="reports">📊 التقارير</div>
+    <div class="tab manager-only" data-tab="staff">👥 متابعة الموظفين</div>
     <div class="tab manager-only" data-tab="master">⚙️ البيانات الثابتة</div>
     <div class="tab manager-only" data-tab="upload">📥 رفع البيانات</div>
   </div>
@@ -356,6 +357,14 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
         <option value="contacted">✅ تم التواصل</option>
         <option value="not_contacted">⏳ لم يتم</option>
       </select>
+      <select class="fi" id="s-fcr" onchange="renderShipments()" style="min-width:130px">
+        <option value="">نتيجة التواصل</option>
+        <option value="solved">✅ تم الحل</option>
+        <option value="contacted">📞 تم التواصل</option>
+        <option value="no_answer">📵 لا يرد</option>
+        <option value="pending">⏳ قيد المتابعة</option>
+        <option value="none">— بدون نتيجة</option>
+      </select>
     </div>
     
     <div style="background:var(--bg3);border:1px solid var(--rim);border-radius:var(--r);overflow:hidden">
@@ -367,7 +376,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
         <table>
           <thead>
           <tr>
-            <th colspan="14" style="padding:6px 8px;background:var(--bg2)">
+            <th colspan="16" style="padding:6px 8px;background:var(--bg2)">
               <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">
                 <button onclick="setAlpha('')" id="alpha-all" class="abtn on">الكل</button><button onclick="setAlpha('0-9')" id="alpha-0" class="abtn">0-9</button><button onclick="setAlpha('أ')" id="alpha-أ" class="abtn">أ</button><button onclick="setAlpha('ب')" id="alpha-ب" class="abtn">ب</button><button onclick="setAlpha('ت')" id="alpha-ت" class="abtn">ت</button><button onclick="setAlpha('ث')" id="alpha-ث" class="abtn">ث</button><button onclick="setAlpha('ج')" id="alpha-ج" class="abtn">ج</button><button onclick="setAlpha('ح')" id="alpha-ح" class="abtn">ح</button><button onclick="setAlpha('خ')" id="alpha-خ" class="abtn">خ</button><button onclick="setAlpha('د')" id="alpha-د" class="abtn">د</button><button onclick="setAlpha('ذ')" id="alpha-ذ" class="abtn">ذ</button><button onclick="setAlpha('ر')" id="alpha-ر" class="abtn">ر</button><button onclick="setAlpha('ز')" id="alpha-ز" class="abtn">ز</button><button onclick="setAlpha('س')" id="alpha-س" class="abtn">س</button><button onclick="setAlpha('ش')" id="alpha-ش" class="abtn">ش</button><button onclick="setAlpha('ص')" id="alpha-ص" class="abtn">ص</button><button onclick="setAlpha('ض')" id="alpha-ض" class="abtn">ض</button><button onclick="setAlpha('ط')" id="alpha-ط" class="abtn">ط</button><button onclick="setAlpha('ظ')" id="alpha-ظ" class="abtn">ظ</button><button onclick="setAlpha('ع')" id="alpha-ع" class="abtn">ع</button><button onclick="setAlpha('غ')" id="alpha-غ" class="abtn">غ</button><button onclick="setAlpha('ف')" id="alpha-ف" class="abtn">ف</button><button onclick="setAlpha('ق')" id="alpha-ق" class="abtn">ق</button><button onclick="setAlpha('ك')" id="alpha-ك" class="abtn">ك</button><button onclick="setAlpha('ل')" id="alpha-ل" class="abtn">ل</button><button onclick="setAlpha('م')" id="alpha-م" class="abtn">م</button><button onclick="setAlpha('ن')" id="alpha-ن" class="abtn">ن</button><button onclick="setAlpha('ه')" id="alpha-ه" class="abtn">ه</button><button onclick="setAlpha('و')" id="alpha-و" class="abtn">و</button><button onclick="setAlpha('ي')" id="alpha-ي" class="abtn">ي</button><button onclick="setAlpha('a')" id="alpha-a" class="abtn">a</button><button onclick="setAlpha('b')" id="alpha-b" class="abtn">b</button><button onclick="setAlpha('c')" id="alpha-c" class="abtn">c</button><button onclick="setAlpha('d')" id="alpha-d" class="abtn">d</button><button onclick="setAlpha('e')" id="alpha-e" class="abtn">e</button><button onclick="setAlpha('f')" id="alpha-f" class="abtn">f</button><button onclick="setAlpha('g')" id="alpha-g" class="abtn">g</button><button onclick="setAlpha('h')" id="alpha-h" class="abtn">h</button><button onclick="setAlpha('i')" id="alpha-i" class="abtn">i</button><button onclick="setAlpha('j')" id="alpha-j" class="abtn">j</button><button onclick="setAlpha('k')" id="alpha-k" class="abtn">k</button><button onclick="setAlpha('l')" id="alpha-l" class="abtn">l</button><button onclick="setAlpha('m')" id="alpha-m" class="abtn">m</button><button onclick="setAlpha('n')" id="alpha-n" class="abtn">n</button><button onclick="setAlpha('o')" id="alpha-o" class="abtn">o</button><button onclick="setAlpha('p')" id="alpha-p" class="abtn">p</button><button onclick="setAlpha('q')" id="alpha-q" class="abtn">q</button><button onclick="setAlpha('r')" id="alpha-r" class="abtn">r</button><button onclick="setAlpha('s')" id="alpha-s" class="abtn">s</button><button onclick="setAlpha('t')" id="alpha-t" class="abtn">t</button><button onclick="setAlpha('u')" id="alpha-u" class="abtn">u</button><button onclick="setAlpha('v')" id="alpha-v" class="abtn">v</button><button onclick="setAlpha('w')" id="alpha-w" class="abtn">w</button><button onclick="setAlpha('x')" id="alpha-x" class="abtn">x</button><button onclick="setAlpha('y')" id="alpha-y" class="abtn">y</button><button onclick="setAlpha('z')" id="alpha-z" class="abtn">z</button>
               </div>
@@ -376,10 +385,10 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
           <tr>
             <th><input type="checkbox" id="chk-all" onchange="toggleAll(this)"></th>
             <th>#</th><th>الكود</th><th>المتجر / العميل</th><th>هاتف العميل</th>
-            <th>المندوب</th><th>الفرع</th><th>أيام التأخير</th><th>الحالة</th>
-            <th>آخر تواصل</th><th>محاولات</th><th>ملاحظة</th><th>واتساب</th><th>حفظ</th>
+            <th>المندوب</th><th>الفرع الحالي</th><th>الفرع المسئول</th><th>أيام التأخير</th><th>الحالة</th>
+            <th>نتيجة التواصل</th><th>آخر تواصل</th><th>محاولات</th><th>ملاحظة</th><th>واتساب</th><th>حفظ</th>
           </tr></thead>
-          <tbody id="s-tbody"><tr><td colspan="14" style="text-align:center;padding:36px;color:var(--mute)">ارفع ملف الطرود من تبويب "رفع البيانات"</td></tr></tbody>
+          <tbody id="s-tbody"><tr><td colspan="16" style="text-align:center;padding:36px;color:var(--mute)">ارفع ملف الطرود من تبويب "رفع البيانات"</td></tr></tbody>
         </table>
       </div>
       <div style="padding:10px 16px;border-top:1px solid var(--rim);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -521,6 +530,28 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
       <button class="btn btn-ghost" style="padding:20px;flex-direction:column;gap:6px;height:auto;width:100%;font-size:13px" onclick="showDriverRpt()">👤<br>أداء المناديب</button>
     </div>
     <div id="rpt-out"></div>
+  </div>
+
+  <!-- ══ STAFF TRACKER ══ -->
+  <div class="page manager-only" id="tab-staff">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:18px;font-weight:800">👥 متابعة الموظفين</div>
+      <button class="btn btn-ghost btn-sm" onclick="renderStaff()">↻ تحديث</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px" id="staff-kpis"></div>
+    <div class="card">
+      <div class="ctitle">📋 أداء الموظفين اليوم</div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>الموظف</th><th>طرود تمت متابعتها</th><th>✅ تم الحل</th><th>📞 تم التواصل</th><th>📵 لا يرد</th><th>⏳ قيد المتابعة</th><th>نسبة الإنجاز</th></tr></thead>
+          <tbody id="staff-tbody"><tr><td colspan="7" style="text-align:center;padding:36px;color:var(--mute)">لا بيانات</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="ctitle">📊 ملخص نتائج التواصل لكل الطرود</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px" id="staff-cr-summary"></div>
+    </div>
   </div>
 
   <!-- ══ MASTER DATA ══ -->
@@ -948,7 +979,7 @@ function buildDropdowns(){
 }
 
 function resetAllFilters(){
-  ['s-q','s-fd','s-fst','s-fb','s-fd2','s-fr','s-fstore','s-fdays','s-fcontact'].forEach(id=>{
+  ['s-q','s-fd','s-fst','s-fb','s-fd2','s-fr','s-fstore','s-fdays','s-fcontact','s-fcr'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){if(el.tagName==='INPUT')el.value='';else el.selectedIndex=0;}
   });
@@ -1027,6 +1058,7 @@ function renderShipments(){
   const fstore=document.getElementById('s-fstore')?.value||'';
   const fdays=document.getElementById('s-fdays')?.value||'';
   const fcontact=document.getElementById('s-fcontact')?.value||'';
+  const fcr=document.getElementById('s-fcr')?.value||'';
   let list=shipments;
   document.getElementById('sn-all').textContent=list.length;
   document.getElementById('sn-wait').textContent=list.filter(s=>!contacted.has(String(s.id))).length;
@@ -1053,6 +1085,11 @@ function renderShipments(){
     }
     if(fcontact==='contacted'&&!contacted.has(String(s.id)))return false;
     if(fcontact==='not_contacted'&&contacted.has(String(s.id)))return false;
+    if(fcr){
+      const cr=localStorage.getItem('cr_'+s.id)||'';
+      if(fcr==='none'&&cr!=='')return false;
+      if(fcr!=='none'&&cr!==fcr)return false;
+    }
     if(q&&!`${s.tracking_code} ${s.customer_name} ${s.driver_name} ${s.region_name} ${s.branch_name} ${s.customer_phone}`.toLowerCase().includes(q))return false;
     if(alphaFilter){
       const first=(s.customer_name||s.tracking_code||'')[0]||'';
@@ -1067,16 +1104,18 @@ function renderShipments(){
   const page=list.slice((sPage-1)*PER,sPage*PER);
   document.getElementById('s-cnt').textContent=total+' طرد';
   const tbody=document.getElementById('s-tbody');
-  if(!page.length){tbody.innerHTML=`<tr><td colspan="14" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج</td></tr>`;buildPgn(total,totalP);return;}
+  if(!page.length){tbody.innerHTML=`<tr><td colspan="16" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج</td></tr>`;buildPgn(total,totalP);return;}
   tbody.innerHTML=page.map((s,idx)=>{
     const sid=String(s.id).replace(/"/g,'&quot;');
     const note=(localStorage.getItem('note_'+s.id)||'').replace(/"/g,'&quot;');
     const att=parseInt(localStorage.getItem('att_'+s.id)||'0');
     const lct=localStorage.getItem('lct_'+s.id)||'';
+    const cResult=localStorage.getItem('cr_'+s.id)||'';
     // Enrich driver phone from drivers_db if missing
     const drv=drivers_db.find(d=>d.id===s.driver_id || d.name===s.driver_name)||{};
     const drvPhone=drv.phone||s.driver_phone||'';
     const brn=branches.find(b=>b.id===s.current_branch_id || b.name===s.branch_name)||{};
+    const respBranch=s.responsible_branch||localStorage.getItem('rb_'+s.id)||localStorage.getItem('rb_'+s.tracking_code)||'';
     return`<tr class="pr" data-sid="${sid}" style="${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}">
       <td onclick="event.stopPropagation()"><input type="checkbox" data-sid="${sid}" ${checked.has(String(s.id))?'checked':''} onchange="this.checked?checked.add(this.dataset.sid):checked.delete(this.dataset.sid)"></td>
       <td style="color:var(--dim);font-size:10px;text-align:center">${(sPage-1)*PER+idx+1}</td>
@@ -1085,8 +1124,16 @@ function renderShipments(){
       <td style="font-family:var(--mono);font-size:11px">${s.customer_phone&&s.customer_phone!=='—'?`<a href="tel:${s.customer_phone}" style="color:var(--blu)">${s.customer_phone}</a>`:'—'}</td>
       <td style="color:var(--white)">${s.driver_name||'—'}${drvPhone?`<div style="font-size:9px;color:var(--dim);font-family:var(--mono)">${drvPhone}</div>`:''}</td>
       <td style="font-size:11px;color:var(--mute)">${s.branch_name||'—'}</td>
+      <td style="font-size:11px;color:var(--pale)">${respBranch||'—'}</td>
       <td>${dBadge(s.delay_days)}</td>
       <td>${stBadge(s.status)}</td>
+      <td onclick="event.stopPropagation()"><select class="cr-sel" data-sid="${sid}" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 4px;font-size:10px;color:var(--white);font-family:var(--font)">
+        <option value="" ${!cResult?'selected':''}>—</option>
+        <option value="solved" ${cResult==='solved'?'selected':''}>✅ تم الحل</option>
+        <option value="contacted" ${cResult==='contacted'?'selected':''}>📞 تم التواصل</option>
+        <option value="no_answer" ${cResult==='no_answer'?'selected':''}>📵 لا يرد</option>
+        <option value="pending" ${cResult==='pending'?'selected':''}>⏳ قيد المتابعة</option>
+      </select></td>
       <td style="font-size:10px;color:var(--mute);white-space:nowrap">${lct||ctBadge(s.id)}</td>
       <td style="text-align:center"><span class="badge ${att>2?'b-red':att>0?'b-gold':'b-dim'}" style="font-family:var(--mono)">${att}</span></td>
       <td onclick="event.stopPropagation()"><input type="text" value="${note}" placeholder="ملاحظة..." data-sid="${sid}" class="note-inp" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:3px 7px;font-size:11px;color:var(--white);font-family:var(--font);width:110px"></td>
@@ -1110,11 +1157,17 @@ function renderShipments(){
         } else if(a==='save'){
           const ni=row?.querySelector('.note-inp');
           if(ni)localStorage.setItem('note_'+sid,ni.value);
+          const cr=row?.querySelector('.cr-sel');
+          if(cr)localStorage.setItem('cr_'+sid,cr.value);
           markCt(sid);
           btn.textContent='✅';setTimeout(()=>btn.textContent='💾',1500);
         } else if(a==='detail') openDetail(sid);
         else if(a==='return') openRetModal(sid);
-      } else if(row&&!e.target.closest('input')&&!e.target.closest('textarea')) openDetail(row.dataset.sid);
+      } else if(row&&!e.target.closest('input')&&!e.target.closest('textarea')&&!e.target.closest('select')) openDetail(row.dataset.sid);
+    });
+    tbody.addEventListener('change',e=>{
+      const cr=e.target.closest('.cr-sel');
+      if(cr){localStorage.setItem('cr_'+cr.dataset.sid,cr.value);}
     });
   }
   buildPgn(total,totalP);
@@ -1810,6 +1863,7 @@ async function uploadShipments(rows){
     const driverPhoneRaw = normPhone(gf('رقم المندوب','هاتف المندوب','driver_phone')(r)||'');
     const regionRaw = gf('المنطقة','المدينة','region_name','City')(r)||'';
     const branchRaw = gf('الفرع الحالى','الفرع','branch_name')(r)||'';
+    const respBranchRaw = gf('الفرع المسئول','الفرع المسؤول','responsible_branch')(r)||'';
 
     // Resolve driver by name first, then phone
     let resolvedDriver = null;
@@ -1870,6 +1924,9 @@ async function uploadShipments(rows){
       if(sk)resolvedStore=storeMap[sk];
     }
     if(resolvedStore?.id) rec.store_id=resolvedStore.id;
+
+    // Store responsible branch locally
+    if(respBranchRaw) localStorage.setItem('rb_'+code,respBranchRaw);
 
     data.push(rec);
   }
@@ -2047,6 +2104,7 @@ function gTab(id){
     transfers:renderTransfers,
     whatsapp:renderWA,
     reports:genDaily,
+    staff:renderStaff,
     master:()=>{setMasterSeg(masterSeg);renderMasterContent();setTimeout(renderStatusLists,100);},
     upload:()=>{loadDbStats();},
   };
@@ -2157,6 +2215,83 @@ function sendToBranchManager(sid){
 — منظومة ${CFG.company}`;
   openWAUrl(ph,msg);
   toast('🚨 تم تبليغ مدير الفرع','e');
+}
+
+// ══════════════════════════════════════════
+// STAFF TRACKER
+// ══════════════════════════════════════════
+function renderStaff(){
+  const users=Object.entries(USERS);
+  const crMap={solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
+
+  // Count contact results across all shipments
+  let totalFollowed=0,totalSolved=0,totalContacted=0,totalNoAnswer=0,totalPending=0,totalNone=0;
+  shipments.forEach(s=>{
+    const cr=localStorage.getItem('cr_'+s.id)||'';
+    if(cr==='solved')totalSolved++;
+    else if(cr==='contacted')totalContacted++;
+    else if(cr==='no_answer')totalNoAnswer++;
+    else if(cr==='pending')totalPending++;
+    else totalNone++;
+    if(cr)totalFollowed++;
+  });
+
+  // KPIs
+  const kpis=document.getElementById('staff-kpis');
+  kpis.innerHTML=`
+    <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--gold);font-family:var(--mono)">${shipments.length}</div><div style="font-size:11px;color:var(--mute)">إجمالي الطرود</div></div>
+    <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--grn);font-family:var(--mono)">${totalFollowed}</div><div style="font-size:11px;color:var(--mute)">تمت متابعتها</div></div>
+    <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--red);font-family:var(--mono)">${totalNone}</div><div style="font-size:11px;color:var(--mute)">بدون متابعة</div></div>
+    <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--pur);font-family:var(--mono)">${shipments.length?Math.round(totalFollowed/shipments.length*100):0}%</div><div style="font-size:11px;color:var(--mute)">نسبة الإنجاز</div></div>
+  `;
+
+  // Per-employee stats (based on contacted_log and localStorage actions)
+  const empStats={};
+  users.forEach(([uname,u])=>{empStats[u.name]={name:u.name,role:u.role,followed:0,solved:0,contacted:0,no_answer:0,pending:0};});
+
+  // Track who did what based on localStorage timestamps
+  // For now, attribute all to the current logged-in user (since localStorage is per-browser)
+  const currentUser=CU?.name||'—';
+  if(!empStats[currentUser])empStats[currentUser]={name:currentUser,role:'employee',followed:0,solved:0,contacted:0,no_answer:0,pending:0};
+  shipments.forEach(s=>{
+    const cr=localStorage.getItem('cr_'+s.id)||'';
+    if(!cr)return;
+    empStats[currentUser].followed++;
+    if(cr==='solved')empStats[currentUser].solved++;
+    else if(cr==='contacted')empStats[currentUser].contacted++;
+    else if(cr==='no_answer')empStats[currentUser].no_answer++;
+    else if(cr==='pending')empStats[currentUser].pending++;
+  });
+
+  const rows=Object.values(empStats).sort((a,b)=>b.followed-a.followed);
+  const tbody=document.getElementById('staff-tbody');
+  if(!rows.length||!rows.some(r=>r.followed>0)){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:36px;color:var(--mute)">لا توجد بيانات متابعة بعد</td></tr>';
+  } else {
+    tbody.innerHTML=rows.filter(r=>r.followed>0).map(r=>{
+      const pct=totalFollowed?Math.round(r.followed/shipments.length*100):0;
+      const pctColor=pct>70?'var(--grn)':pct>30?'var(--gold)':'var(--red)';
+      return`<tr>
+        <td><strong>${r.name}</strong><div style="font-size:10px;color:var(--dim)">${r.role==='manager'?'مدير':'موظف'}</div></td>
+        <td style="font-family:var(--mono);font-weight:700">${r.followed}</td>
+        <td style="color:var(--grn);font-weight:700">${r.solved}</td>
+        <td style="color:var(--blu);font-weight:700">${r.contacted}</td>
+        <td style="color:var(--red);font-weight:700">${r.no_answer}</td>
+        <td style="color:var(--gold);font-weight:700">${r.pending}</td>
+        <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;background:var(--bg5);border-radius:99px;height:6px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${pctColor};border-radius:99px"></div></div><span style="font-size:11px;font-weight:700;color:${pctColor};font-family:var(--mono)">${pct}%</span></div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // CR summary
+  const summary=document.getElementById('staff-cr-summary');
+  summary.innerHTML=`
+    <div style="background:var(--grd);border:1px solid var(--grb);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--grn);font-family:var(--mono)">${totalSolved}</div><div style="font-size:11px;color:var(--grn)">✅ تم الحل</div></div>
+    <div style="background:var(--bld);border:1px solid var(--blb);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--blu);font-family:var(--mono)">${totalContacted}</div><div style="font-size:11px;color:var(--blu)">📞 تم التواصل</div></div>
+    <div style="background:var(--rd);border:1px solid var(--rb);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--red);font-family:var(--mono)">${totalNoAnswer}</div><div style="font-size:11px;color:var(--red)">📵 لا يرد</div></div>
+    <div style="background:var(--gd);border:1px solid var(--gb);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--gold);font-family:var(--mono)">${totalPending}</div><div style="font-size:11px;color:var(--gold)">⏳ قيد المتابعة</div></div>
+    <div style="background:var(--bg4);border:1px solid var(--rim);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--mute);font-family:var(--mono)">${totalNone}</div><div style="font-size:11px;color:var(--mute)">بدون متابعة</div></div>
+  `;
 }
 
 // ══════════════════════════════════════════
