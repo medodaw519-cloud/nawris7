@@ -1954,10 +1954,10 @@ async function uploadShipments(rows,forceStatus){
     const driverPhone=normPhone(gf('رقم المندوب','هاتف المندوب','driver_phone')(r)||'');
     const regionName=gf('المنطقة','المدينة','region_name','City')(r)||'';
     const branchName=gf('الفرع الحالى','الفرع','branch_name','Branch')(r)||'';
-    const customerPhone=normPhone(gf('المستلم','هاتف العميل','customer_phone','ReceiverPhone')(r)||'')||gf('المستلم','هاتف العميل','customer_phone','ReceiverPhone')(r)||'—';
+    const customerPhone=normPhone(gf('رقم المستلم 1','المستلم','هاتف العميل','customer_phone','ReceiverPhone')(r)||'')||gf('رقم المستلم 1','المستلم','هاتف العميل','customer_phone','ReceiverPhone')(r)||'—';
 
     // Extract customer name
-    const customerName = gf('المرسل','اسم العميل','customer_name','ClientName','SenderName')(r)||'—';
+    const customerName = gf('العميل','المرسل','اسم العميل','customer_name','ClientName','SenderName')(r)||'—';
 
     // Check if customer is a registered store
     const custLower=(customerName||'').trim().toLowerCase();
@@ -1981,8 +1981,8 @@ async function uploadShipments(rows,forceStatus){
     }
 
     // Extract fields with exact column names from النورس file
-    const receiverPhone = normPhone(gf('المستلم','هاتف المستلم','customer_phone','ReceiverPhone')(r)||'') ||
-                          gf('المستلم','هاتف المستلم','customer_phone','ReceiverPhone')(r)||'—';
+    const receiverPhone = normPhone(gf('رقم المستلم 1','المستلم','هاتف المستلم','customer_phone','ReceiverPhone')(r)||'') ||
+                          gf('رقم المستلم 1','المستلم','هاتف المستلم','customer_phone','ReceiverPhone')(r)||'—';
     const driverNameRaw = gf('المندوب','اسم المندوب','driver_name')(r)||'';
     const driverPhoneRaw = normPhone(gf('رقم المندوب','هاتف المندوب','driver_phone')(r)||'');
     const regionRaw = gf('المنطقة','المدينة','region_name','City')(r)||'';
