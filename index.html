@@ -816,6 +816,21 @@ async function sb(table,method='GET',body=null,params=''){
   if(!r.ok){const e=await r.text();throw new Error(e);}
   return method==='GET'?r.json():true;
 }
+async function sbAll(table,params=''){
+  // Load all rows in batches of 1000 (Supabase default max)
+  let all=[],offset=0;
+  const batchSize=1000;
+  while(true){
+    const sep=params.includes('?')?'&':'?';
+    const r=await fetch(`${SB}/rest/v1/${table}${params}${sep}limit=${batchSize}&offset=${offset}`,{headers:H});
+    if(!r.ok){const e=await r.text();throw new Error(e);}
+    const batch=await r.json();
+    all=all.concat(batch);
+    if(batch.length<batchSize)break;
+    offset+=batchSize;
+  }
+  return all;
+}
 async function sbUp(table,data,conflict='merge-duplicates'){
   const prefer=conflict==='ignore'?'resolution=ignore-duplicates,return=minimal':'resolution=merge-duplicates,return=minimal';
   const r=await fetch(`${SB}/rest/v1/${table}`,{method:'POST',headers:{...H,'Prefer':prefer},body:JSON.stringify(Array.isArray(data)?data:[data])});
@@ -896,12 +911,12 @@ async function loadAll(){
   setSyncState('busy','تحميل...');
   try{
     const [sh,dr,br,re,st,ct,tpls,cfg,crdb]=await Promise.all([
-      sb('shipments_view','GET',null,'?order=delay_days.desc&limit=10000'),
+      sbAll('shipments_view','?order=delay_days.desc'),
       sb('drivers','GET',null,'?select=*&order=name'),
       sb('branches','GET',null,'?select=*&order=name'),
       sb('regions','GET',null,'?select=*&order=name'),
       sb('stores','GET',null,'?select=*&order=name'),
-      sb('contacted_log','GET',null,'?select=shipment_id'),
+      sbAll('contacted_log','?select=shipment_id'),
       sb('wa_templates','GET',null,'?select=*'),
       sb('settings','GET',null,'?select=key,value'),
       sb('contact_results','GET',null,'?select=*'),
@@ -928,8 +943,8 @@ async function loadShipments(){
   setSyncState('busy','تحديث...');
   try{
     const [sh,ct]=await Promise.all([
-      sb('shipments_view','GET',null,'?order=delay_days.desc&limit=10000'),
-      sb('contacted_log','GET',null,'?select=shipment_id'),
+      sbAll('shipments_view','?order=delay_days.desc'),
+      sbAll('contacted_log','?select=shipment_id'),
     ]);
     shipments=sh; contacted=new Set(ct.map(r=>r.shipment_id));
     refreshAll(); setSyncState('ok','متصل');
