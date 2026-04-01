@@ -2790,36 +2790,48 @@ async function fetchAPIShipments(){
   if(stEl)stEl.textContent='جارٍ الجلب...';
 
   try{
-    // ── PAGINATED FETCH: Follow next_cursor to get ALL shipments ──
+    // ── RANGE-BASED FETCH: Get all shipments by fetching multiple delay ranges ──
+    // API cursor pagination is broken on Nawris, so we fetch by ranges instead
+    // Strategy: fetch high delay first (fewer results), then lower delay (more results)
+    // Deduplicate by tracking_code to merge overlapping ranges
     let rawData=[];
-    let cursor='';
-    let pageNum=0;
-    const maxPages=20; // Safety limit
+    const seen=new Set();
+    const baseUrl=url.replace(/[?&]delay_days=\d+/g,''); // Strip existing delay_days
+    const sep=baseUrl.includes('?')?'&':'?';
 
-    while(pageNum<maxPages){
-      pageNum++;
-      if(el)el.textContent=`⏳ جارٍ جلب الصفحة ${pageNum}...`;
+    // Fetch ranges: high to low delay to get all unique shipments
+    const ranges=[50,30,20,15,10,5,1];
+    let totalFetched=0;
+
+    for(let ri=0;ri<ranges.length;ri++){
+      const days=ranges[ri];
+      const rangeUrl=`${baseUrl}${sep}delay_days=${days}`;
+      if(el)el.textContent=`⏳ جلب الطرود (تأخير ${days}+ يوم)... [${totalFetched} حتى الآن]`;
 
       try{
-        const res=await apiFetch(url,token,cursor||'');
-        if(!res.ok){
-          if(pageNum>1){console.warn('API pagination stopped at page '+pageNum+': HTTP '+res.status);break;}
-          throw new Error(`HTTP ${res.status}`);
-        }
+        const res=await apiFetch(rangeUrl,token);
+        if(!res.ok){console.warn(`Range delay>=${days} failed: ${res.status}`);continue;}
         const json=await res.json();
-
         const pageData=Array.isArray(json)?json:json?.data||json?.results||json?.orders||json?.shipments||[];
-        if(pageData.length)rawData=rawData.concat(pageData);
 
-        const nextCursor=json?.meta?.next_cursor||json?.next_cursor||null;
-        if(!nextCursor||!pageData.length){
-          break;
+        let newCount=0;
+        for(const item of pageData){
+          const code=String(item.code||item.id||item.tracking_code||'').trim();
+          if(code&&!seen.has(code)){
+            seen.add(code);
+            rawData.push(item);
+            newCount++;
+          }
         }
-        cursor=nextCursor;
-      }catch(pgErr){
-        if(pageNum>1){console.warn('API pagination error at page '+pageNum,pgErr);break;}
-        throw pgErr;
-      }
+        totalFetched=rawData.length;
+        console.log(`Range delay>=${days}: ${pageData.length} fetched, ${newCount} new, total: ${totalFetched}`);
+
+        // If this range returned less than 100, all remaining ranges will be subsets — skip
+        if(pageData.length<100&&ri<ranges.length-1){
+          // But still try lower ranges in case there are different shipments
+          continue;
+        }
+      }catch(e){console.warn(`Range delay>=${days} error:`,e.message);continue;}
     }
 
     if(!rawData.length){
@@ -2844,12 +2856,12 @@ async function fetchAPIShipments(){
       if(s.includes('متأخر')||s.includes('مؤجل'))return 'delayed';
       return s; // Keep original if no match
     }
-    const seen=new Set();
+    const seen2=new Set();
     apiShipments=[];
 
     for(const [i,r] of rawData.entries()){
       const code=String(r.code||r.id||r.tracking_code||r.order_id||r.ParcelCode||('API-'+Date.now()+'-'+i)).trim();
-      if(seen.has(code))continue;seen.add(code);
+      if(seen2.has(code))continue;seen2.add(code);
 
       const days=parseInt(r.delay_days||r[delayField]||r['عدد الايام المتأخرة']||r['التأخير']||0)||0;
       const clientName=String(r.client_name||r.customer_name||r.name||r['العميل']||r['المرسل']||'—').trim();
@@ -2897,7 +2909,7 @@ async function fetchAPIShipments(){
     localStorage.setItem('api_fetch_log',JSON.stringify(apiFetchLog));
 
     // Update UI
-    if(el)el.innerHTML=`<span style="color:var(--grn)">✅ تم جلب ${apiShipments.length} طرد${pageNum>1?' ('+pageNum+' صفحة)':''} — ${new Date().toLocaleTimeString('ar-LY')}</span>`;
+    if(el)el.innerHTML=`<span style="color:var(--grn)">✅ تم جلب ${apiShipments.length} طرد — ${new Date().toLocaleTimeString('ar-LY')}</span>`;
     if(dot)dot.className='sync-dot';
     if(stEl)stEl.textContent='متصل — '+apiShipments.length+' طرد';
     document.getElementById('api-last-fetch').textContent='آخر جلب: '+new Date().toLocaleTimeString('ar-LY');
