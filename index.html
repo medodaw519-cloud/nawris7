@@ -2259,14 +2259,16 @@ async function uploadShipments(rows,forceStatus){
 // ══════════════════════════════════════════
 // API INTEGRATION
 // ══════════════════════════════════════════
-// CORS proxy via Cloudflare Worker — uses POST to avoid URL encoding issues
+// CORS proxy via Cloudflare Worker — sends cursor separately to avoid encoding issues
 const PROXY='https://misty-wildflower-54d1.medodaw519.workers.dev';
-async function apiFetch(fullUrl,token){
+async function apiFetch(baseUrl,token,cursor){
   const cleanToken=token?token.replace(/^(Bearer|Token)\s*/i,'').trim():'';
+  const body={url:baseUrl,token:cleanToken};
+  if(cursor)body.cursor=cursor;
   const r=await fetch(PROXY,{
     method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json'},
-    body:JSON.stringify({url:fullUrl,token:cleanToken})
+    body:JSON.stringify(body)
   });
   return r;
 }
@@ -2302,11 +2304,9 @@ async function fetchFromAPI(){
     let rawData=[],cursor='',pg=0;
     while(pg<20){
       pg++;
-      const sep=url.includes('?')?'&':'?';
-      const fullUrl=cursor?`${url}${sep}cursor=${cursor}`:url;
       el.textContent=`⏳ صفحة ${pg}...`;
       try{
-        const res=await apiFetch(fullUrl,token);
+        const res=await apiFetch(url,token,cursor||'');
         if(!res.ok){if(pg>1)break;throw new Error(`HTTP ${res.status}`);}
         const json=await res.json();
         const pageData=Array.isArray(json)?json:json?.data||json?.results||json?.orders||json?.shipments||[];
@@ -2798,13 +2798,10 @@ async function fetchAPIShipments(){
 
     while(pageNum<maxPages){
       pageNum++;
-      // Build full API URL with cursor parameter
-      const sep=url.includes('?')?'&':'?';
-      const fullUrl=cursor?`${url}${sep}cursor=${cursor}`:url;
       if(el)el.textContent=`⏳ جارٍ جلب الصفحة ${pageNum}...`;
 
       try{
-        const res=await apiFetch(fullUrl,token);
+        const res=await apiFetch(url,token,cursor||'');
         if(!res.ok){
           if(pageNum>1){console.warn('API pagination stopped at page '+pageNum+': HTTP '+res.status);break;}
           throw new Error(`HTTP ${res.status}`);
