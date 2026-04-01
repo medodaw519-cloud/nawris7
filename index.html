@@ -536,7 +536,10 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
 
     <!-- Filters -->
     <div class="fbar">
-      <input class="fi fi-grow" id="a-q" type="text" placeholder="🔍 بحث بالكود، العميل، المندوب..." oninput="renderAPIShipments()">
+      <input class="fi fi-grow" id="a-q" type="text" placeholder="🔍 بحث بالكود، المتجر، المستلم، المندوب، الفرع..." oninput="renderAPIShipments()">
+      <button class="btn btn-ghost btn-sm" onclick="resetAPIFilters()" title="مسح الفلاتر">✕ مسح</button>
+    </div>
+    <div class="fbar" style="flex-wrap:wrap">
       <select class="fi" id="a-fd" onchange="renderAPIShipments()" style="min-width:120px">
         <option value="">كل التأخير</option>
         <option value="critical">🔴 +15 يوم</option>
@@ -551,6 +554,9 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
         <option value="returned">مرتجع</option>
         <option value="delivered">مُسلَّم</option>
       </select>
+      <select class="fi" id="a-fcap" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المناديب</option></select>
+      <select class="fi" id="a-fbr" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل الفروع</option></select>
+      <select class="fi" id="a-fgov" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المحافظات</option></select>
       <select class="fi" id="a-fdays" onchange="renderAPIShipments()" style="min-width:130px">
         <option value="">أيام التأخير</option>
         <option value="0-5">0-5 أيام</option>
@@ -560,7 +566,6 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
         <option value="31-60">31-60 يوم</option>
         <option value="60+">+60 يوم</option>
       </select>
-      <button class="btn btn-ghost btn-sm" onclick="resetAPIFilters()" title="مسح الفلاتر">✕ مسح</button>
     </div>
 
     <!-- Table -->
@@ -576,11 +581,12 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
           <thead>
           <tr>
             <th><input type="checkbox" id="achk-all" onchange="toggleAllAPI(this)"></th>
-            <th>#</th><th>الكود</th><th>العميل</th><th>هاتف العميل</th>
+            <th>#</th><th>الكود</th><th>المتجر / العميل</th><th>المستلم</th><th>هاتف المستلم</th>
+            <th>المندوب</th><th>الفرع</th><th>المحافظة</th><th>المنطقة</th>
             <th>الحالة</th><th>أيام التأخير</th><th>نتيجة التواصل</th><th>ملاحظة</th>
             <th>واتساب</th><th>حفظ</th><th>نقل للطرود</th>
           </tr></thead>
-          <tbody id="a-tbody"><tr><td colspan="12" style="text-align:center;padding:36px;color:var(--mute)">🔗 اضغط "جلب الآن" أو أعد إعدادات API من تبويب "رفع البيانات"</td></tr></tbody>
+          <tbody id="a-tbody"><tr><td colspan="17" style="text-align:center;padding:36px;color:var(--mute)">🔗 اضغط "جلب الآن" أو أعد إعدادات API من تبويب "رفع البيانات"</td></tr></tbody>
         </table>
       </div>
       <div style="padding:10px 16px;border-top:1px solid var(--rim);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1032,6 +1038,8 @@ async function startApp(){
   loadCustomStatuses();
   updateStatusFilters();
   loadCachedAPIShipments();
+  // Auto-sync API shipments after drivers are loaded
+  setTimeout(autoSyncAPI,1500);
   loadCachedAPIShipments();
 }
 
@@ -2712,7 +2720,7 @@ let apiShipments=[], apiSeg='all', aPage=1, aPER=25, apiChecked=new Set(), autoF
 let apiFetchLog=[];
 
 function resetAPIFilters(){
-  ['a-q','a-fd','a-fst','a-fdays'].forEach(id=>{
+  ['a-q','a-fd','a-fst','a-fdays','a-fcap','a-fbr','a-fgov'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){if(el.tagName==='INPUT')el.value='';else el.selectedIndex=0;}
   });
@@ -2796,21 +2804,34 @@ async function fetchAPIShipments(){
     apiShipments=[];
 
     for(const [i,r] of rawData.entries()){
-      const code=String(r.id||r.code||r.tracking_code||r.order_id||r.ParcelCode||('API-'+Date.now()+'-'+i)).trim();
+      const code=String(r.code||r.id||r.tracking_code||r.order_id||r.ParcelCode||('API-'+Date.now()+'-'+i)).trim();
       if(seen.has(code))continue;seen.add(code);
 
-      const days=parseInt(r[delayField]||r.delay_days||r['عدد الايام المتأخرة']||r['التأخير']||0)||0;
-      const customerName=String(r.customer_name||r.client_name||r.name||r['العميل']||r['المرسل']||'—').trim();
-      const customerPhone=String(r.customer_phone||r.phone||r['رقم المستلم 1']||r['هاتف العميل']||'—').trim();
-      const driverName=String(r.driver_name||r['المندوب']||r['اسم المندوب']||'').trim();
+      const days=parseInt(r.delay_days||r[delayField]||r['عدد الايام المتأخرة']||r['التأخير']||0)||0;
+      const clientName=String(r.client_name||r.customer_name||r.name||r['العميل']||r['المرسل']||'—').trim();
+      const receiverName=String(r.receiver_name||r['اسم المستلم']||'').trim();
+      const receiverPhone=String(r.receiver_phone||r.customer_phone||r.phone||r['رقم المستلم 1']||r['هاتف العميل']||'—').trim();
+      const captain=String(r.captain||r.driver_name||r['المندوب']||r['اسم المندوب']||'').trim();
+      const currentBranch=String(r.current_branch||r.branch_name||r['الفرع الحالى']||r['الفرع']||'').trim();
+      const government=String(r.government||r['المحافظة']||'').trim();
+      const area=String(r.area||r.region_name||r['المنطقة']||'').trim();
       const rawStatus=r.status||r['الحالة']||'with_driver';
+      const clientId=r.client_id||'';
 
       apiShipments.push({
         id:'api_'+code,
         tracking_code:code,
-        customer_name:customerName,
-        customer_phone:customerPhone,
-        driver_name:driverName,
+        client_name:clientName,
+        client_id:clientId,
+        receiver_name:receiverName,
+        customer_name:receiverName||clientName,
+        customer_phone:receiverPhone,
+        captain:captain,
+        driver_name:captain,
+        captain_phone:'',
+        current_branch:currentBranch,
+        government:government,
+        area:area,
         raw_status:rawStatus,
         status:resolveStatus(rawStatus),
         delay_days:days,
@@ -2818,6 +2839,9 @@ async function fetchAPIShipments(){
         fetched_at:new Date().toISOString()
       });
     }
+
+    // ── MATCH CAPTAIN PHONES FROM drivers_db ──
+    enrichAPICaptainPhones();
 
     // Save to localStorage for persistence
     localStorage.setItem('api_shipments',JSON.stringify(apiShipments));
@@ -2835,16 +2859,20 @@ async function fetchAPIShipments(){
     document.getElementById('api-last-fetch').textContent='آخر جلب: '+new Date().toLocaleTimeString('ar-LY');
     document.getElementById('tb-api').textContent=apiShipments.length;
 
-    // Also push to Supabase (merge-duplicates)
+    // Also push to Supabase (merge-duplicates) with driver linking
     try{
-      const mapped=apiShipments.map(s=>({
-        tracking_code:s.tracking_code,
-        customer_name:s.customer_name,
-        customer_phone:s.customer_phone,
-        status:s.status,
-        delay_days:s.delay_days,
-        upload_date:new Date().toISOString().split('T')[0]
-      }));
+      const mapped=apiShipments.map(s=>{
+        const rec={
+          tracking_code:s.tracking_code,
+          customer_name:s.client_name||s.receiver_name||'—',
+          customer_phone:s.customer_phone,
+          status:s.status,
+          delay_days:s.delay_days,
+          upload_date:new Date().toISOString().split('T')[0]
+        };
+        if(s.driver_id) rec.driver_id=s.driver_id;
+        return rec;
+      });
       for(let i=0;i<mapped.length;i+=100){
         await fetch(`${SB}/rest/v1/shipments`,{
           method:'POST',
@@ -2878,8 +2906,8 @@ function connectAPI2(){
   const u1=document.getElementById('api-url');if(u1)u1.value=url;
   const t1=document.getElementById('api-token');if(t1)t1.value=token;
 
-  // Save to Supabase
-  sbUp('settings',[{key:'api_url',value:url},{key:'api_token',value:token}]).catch(()=>{});
+  // Save to Supabase (including interval)
+  sbUp('settings',[{key:'api_url',value:url},{key:'api_token',value:token},{key:'api_auto_interval',value:String(interval)}]).catch(()=>{});
 
   // Fetch now
   fetchAPIShipments();
@@ -2945,6 +2973,20 @@ function renderAPIShipments(){
   const fd=document.getElementById('a-fd')?.value||'';
   const fst=document.getElementById('a-fst')?.value||'';
   const fdays=document.getElementById('a-fdays')?.value||'';
+  const fcap=document.getElementById('a-fcap')?.value||'';
+  const fbr=document.getElementById('a-fbr')?.value||'';
+  const fgov=document.getElementById('a-fgov')?.value||'';
+
+  // Build filter dropdowns from data
+  const caps=[...new Set(apiShipments.map(s=>s.captain).filter(Boolean))].sort();
+  const brs=[...new Set(apiShipments.map(s=>s.current_branch).filter(Boolean))].sort();
+  const govs=[...new Set(apiShipments.map(s=>s.government).filter(Boolean))].sort();
+  const capEl=document.getElementById('a-fcap');
+  if(capEl&&!fcap){capEl.innerHTML='<option value="">كل المناديب</option>'+caps.map(c=>`<option>${c}</option>`).join('');}
+  const brEl=document.getElementById('a-fbr');
+  if(brEl&&!fbr){brEl.innerHTML='<option value="">كل الفروع</option>'+brs.map(b=>`<option>${b}</option>`).join('');}
+  const govEl=document.getElementById('a-fgov');
+  if(govEl&&!fgov){govEl.innerHTML='<option value="">كل المحافظات</option>'+govs.map(g=>`<option>${g}</option>`).join('');}
 
   let list=[...apiShipments];
 
@@ -2956,6 +2998,9 @@ function renderAPIShipments(){
   list=list.filter(s=>{
     if(fd&&cls(s.delay_days)!==fd)return false;
     if(fst&&s.status!==fst)return false;
+    if(fcap&&s.captain!==fcap)return false;
+    if(fbr&&s.current_branch!==fbr)return false;
+    if(fgov&&s.government!==fgov)return false;
     if(fdays){
       const d=s.delay_days||0;
       if(fdays==='0-5'&&(d<0||d>5))return false;
@@ -2965,7 +3010,7 @@ function renderAPIShipments(){
       if(fdays==='31-60'&&(d<31||d>60))return false;
       if(fdays==='60+'&&d<61)return false;
     }
-    if(q&&!`${s.tracking_code} ${s.customer_name} ${s.driver_name} ${s.customer_phone}`.toLowerCase().includes(q))return false;
+    if(q&&!`${s.tracking_code} ${s.client_name} ${s.receiver_name} ${s.captain} ${s.customer_phone} ${s.current_branch} ${s.government} ${s.area}`.toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>b.delay_days-a.delay_days);
 
@@ -2976,7 +3021,7 @@ function renderAPIShipments(){
 
   const tbody=document.getElementById('a-tbody');
   if(!page.length){
-    tbody.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج — اضغط "جلب الآن" لجلب البيانات من API</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="17" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج — اضغط "جلب الآن" لجلب البيانات من API</td></tr>`;
     buildAPIPgn(total,totalP);
     return;
   }
@@ -2987,12 +3032,18 @@ function renderAPIShipments(){
     const crData=getCR(s.tracking_code);
     const note=(crData.note||'').replace(/"/g,'&quot;');
     const cResult=crData.result;
+    const ph=s.customer_phone&&s.customer_phone!=='—'&&s.customer_phone!=='undefined';
     return`<tr class="pr" data-asid="${sid}" style="${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}">
       <td><input type="checkbox" data-asid="${sid}" ${apiChecked.has(sid)?'checked':''} onchange="this.checked?apiChecked.add(this.dataset.asid):apiChecked.delete(this.dataset.asid)"></td>
       <td style="color:var(--dim);font-size:10px;text-align:center">${(aPage-1)*aPER+idx+1}</td>
       <td class="code-cell">${s.tracking_code}</td>
-      <td style="color:var(--white);font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis" title="${s.customer_name||''}">${s.customer_name||'—'}</td>
-      <td style="font-family:var(--mono);font-size:11px">${s.customer_phone&&s.customer_phone!=='—'?`<a href="tel:${s.customer_phone}" style="color:var(--blu)">${s.customer_phone}</a>`:'—'}</td>
+      <td style="color:var(--white);font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${s.client_name||''}">${s.client_name||'—'}</td>
+      <td style="font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis" title="${s.receiver_name||''}">${s.receiver_name||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11px">${ph?`<a href="tel:${s.customer_phone}" style="color:var(--blu)">${s.customer_phone}</a>`:'—'}</td>
+      <td style="color:var(--white);font-size:11px">${s.captain||'—'}${s.captain_phone?`<div style="font-size:9px;color:var(--dim);font-family:var(--mono)">${s.captain_phone}</div>`:''}</td>
+      <td style="font-size:11px;color:var(--mute)">${s.current_branch||'—'}</td>
+      <td style="font-size:11px;color:var(--pale)">${s.government||'—'}</td>
+      <td style="font-size:11px;color:var(--mute)">${s.area||'—'}</td>
       <td>${stBadge(s.status)}</td>
       <td>${dBadge(s.delay_days)}</td>
       <td><select class="acr-sel" data-asid="${sid}" data-code="${tc}" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 4px;font-size:10px;color:var(--white);font-family:var(--font)">
@@ -3003,7 +3054,7 @@ function renderAPIShipments(){
         <option value="pending" ${cResult==='pending'?'selected':''}>⏳ قيد المتابعة</option>
       </select></td>
       <td><input type="text" value="${note}" placeholder="ملاحظة..." data-asid="${sid}" data-code="${tc}" class="anote-inp" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:3px 7px;font-size:11px;color:var(--white);font-family:var(--font);width:100px"></td>
-      <td><button class="btn btn-wa btn-sm" onclick="apiWA('${sid}')" style="font-size:11px;padding:4px 9px">💬</button></td>
+      <td style="white-space:nowrap"><div style="display:flex;gap:3px">${ph?`<button class="btn btn-wa btn-sm" onclick="apiWA('${sid}','receiver')" style="font-size:10px;padding:3px 6px" title="واتساب للمستلم">📱</button>`:''}${s.captain_phone?`<button class="btn btn-ghost btn-sm" onclick="apiWA('${sid}','captain')" style="font-size:10px;padding:3px 6px;border-color:var(--wa);color:var(--wa)" title="واتساب للمندوب ${s.captain}">🚗</button>`:''}</div></td>
       <td><button class="btn btn-ghost btn-sm" onclick="apiSave('${sid}',this)" style="font-size:11px;padding:4px 9px">💾</button></td>
       <td><button class="btn btn-pur btn-sm" onclick="apiMove('${sid}')" style="font-size:10px;padding:4px 8px" title="نقل للطرود الرئيسية">📦→</button></td>
     </tr>`;
@@ -3040,13 +3091,23 @@ function buildAPIPgn(total,totalP){
 function changeAPIPerPage(val){aPER=parseInt(val)||25;aPage=1;renderAPIShipments();}
 
 // Global onclick handlers for API shipment buttons
-function apiWA(sid){
+function apiWA(sid,target){
   const s=apiShipments.find(x=>x.id===sid);
   if(!s){toast('لم يتم العثور على الطرد','e');return;}
-  const ph=normPhone(s.customer_phone||'');
   const stLabel=s.raw_status||s.status||'—';
-  const msg=`السلام عليكم ${s.customer_name||''}\n🕊️ ${CFG.company}\n\nبخصوص طردكم رقم: ${s.tracking_code}\nالحالة: ${stLabel}\nالتأخير: ${s.delay_days} يوم\n\nللاستفسار تواصلوا معنا.\n— ${CFG.company}`;
-  openWAUrl(ph,msg);
+
+  if(target==='captain'){
+    // Message to captain/driver
+    const ph=normPhone(s.captain_phone||'');
+    if(!ph){toast('لا يوجد رقم للمندوب — تحقق من بيانات المناديب','w');return;}
+    const msg=`السلام عليكم ${s.captain||''} 👋\n🕊️ ${CFG.company}\n\nتذكير بطرد متأخر:\n📦 كود الطرد: ${s.tracking_code}\n👤 المتجر: ${s.client_name||'—'}\n📱 المستلم: ${s.receiver_name||'—'}\n📞 هاتف المستلم: ${s.customer_phone||'—'}\n📊 الحالة: ${stLabel}\n⏱️ التأخير: ${s.delay_days} يوم\n🏢 الفرع: ${s.current_branch||'—'}\n\n⚠️ يرجى اتخاذ إجراء فوري\n— إدارة ${CFG.company}`;
+    openWAUrl(ph,msg);
+  } else {
+    // Message to receiver/customer
+    const ph=normPhone(s.customer_phone||'');
+    const msg=`السلام عليكم ${s.receiver_name||s.client_name||''}\n🕊️ ${CFG.company}\n\nبخصوص طردكم رقم: ${s.tracking_code}\nالمتجر: ${s.client_name||'—'}\nالحالة: ${stLabel}\nالتأخير: ${s.delay_days} يوم\n${s.captain?'المندوب: '+s.captain+'\n':''}${s.current_branch?'الفرع: '+s.current_branch+'\n':''}\nللاستفسار تواصلوا معنا.\n— ${CFG.company}`;
+    openWAUrl(ph,msg);
+  }
 }
 function apiSave(sid,btn){
   const s=apiShipments.find(x=>x.id===sid);
@@ -3091,12 +3152,21 @@ async function moveAPIToMain(s){
   try{
     const rec={
       tracking_code:s.tracking_code,
-      customer_name:s.customer_name,
+      customer_name:s.client_name||s.receiver_name||'—',
       customer_phone:s.customer_phone,
       status:s.status,
       delay_days:s.delay_days,
       upload_date:new Date().toISOString().split('T')[0]
     };
+    // Link driver if matched
+    if(s.driver_id) rec.driver_id=s.driver_id;
+    // Try to find region
+    const regionMatch=regions.find(r=>r.name&&(r.name.includes(s.area)||s.area.includes(r.name)));
+    if(regionMatch) rec.region_id=regionMatch.id;
+    // Try to find branch
+    const branchMatch=branches.find(b=>b.name&&(b.name.includes(s.current_branch)||s.current_branch.includes(b.name)));
+    if(branchMatch) rec.current_branch_id=branchMatch.id;
+
     await fetch(`${SB}/rest/v1/shipments`,{
       method:'POST',
       headers:{...H,'Prefer':'resolution=merge-duplicates,return=minimal'},
@@ -3107,12 +3177,84 @@ async function moveAPIToMain(s){
   }catch(e){toast('خطأ: '+e.message,'e');}
 }
 
+// ── ENRICH CAPTAIN PHONES FROM DRIVERS DB ──
+function enrichAPICaptainPhones(){
+  if(!apiShipments.length||!drivers_db.length)return;
+  // Build lookup maps: exact name, fuzzy name
+  const byName={};
+  drivers_db.forEach(d=>{if(d.name)byName[d.name.trim()]=d;});
+
+  let matched=0,unmatched=[];
+  apiShipments.forEach(s=>{
+    if(!s.captain||s.captain==='—'||s.captain==='undefined')return;
+    const cap=s.captain.trim();
+    // 1. Exact match
+    let drv=byName[cap];
+    // 2. Fuzzy: API name contains DB name or vice versa
+    if(!drv){
+      const dk=Object.keys(byName).find(k=>k.includes(cap)||cap.includes(k));
+      if(dk)drv=byName[dk];
+    }
+    // 3. Fuzzy: strip spaces, try first/last name
+    if(!drv){
+      const capParts=cap.split(/\s+/);
+      if(capParts.length>=2){
+        const dk=Object.keys(byName).find(k=>{
+          const kParts=k.split(/\s+/);
+          return capParts[0]===kParts[0] || capParts[capParts.length-1]===kParts[kParts.length-1];
+        });
+        if(dk)drv=byName[dk];
+      }
+    }
+    if(drv&&drv.phone){
+      s.captain_phone=normPhone(drv.phone)||drv.phone;
+      s.driver_id=drv.id;
+      matched++;
+    } else {
+      if(!unmatched.includes(cap))unmatched.push(cap);
+    }
+  });
+  if(matched>0)console.log(`✅ API captain phone match: ${matched} matched`);
+  if(unmatched.length>0)console.log(`⚠️ Unmatched captains:`,unmatched);
+}
+
+// ── AUTO-SYNC: Fetch API on page load if settings exist ──
+async function autoSyncAPI(){
+  try{
+    const cfg=await sb('settings','GET',null,'?select=key,value');
+    let url='',token='',interval=0;
+    cfg.forEach(r=>{
+      if(r.key==='api_url')url=r.value||'';
+      if(r.key==='api_token')token=r.value||'';
+      if(r.key==='api_auto_interval')interval=parseInt(r.value)||0;
+    });
+    if(!url)return;
+    // Set inputs
+    const u2=document.getElementById('api-url2');if(u2)u2.value=url;
+    const t2=document.getElementById('api-token2');if(t2)t2.value=token;
+    const u1=document.getElementById('api-url');if(u1)u1.value=url;
+    const t1=document.getElementById('api-token');if(t1)t1.value=token;
+    if(interval>0){
+      const iv=document.getElementById('api-interval2');if(iv)iv.value=interval;
+    }
+    // Auto-fetch on load
+    await fetchAPIShipments();
+    // Set auto-refresh timer
+    if(interval>0){
+      if(autoFetchTimer2)clearInterval(autoFetchTimer2);
+      autoFetchTimer2=setInterval(fetchAPIShipments,interval*3600000);
+    }
+  }catch(e){console.warn('autoSyncAPI',e);}
+}
+
 // Load cached API shipments on startup
 function loadCachedAPIShipments(){
   try{
     const cached=localStorage.getItem('api_shipments');
     if(cached){
       apiShipments=JSON.parse(cached);
+      // Re-enrich captain phones from current drivers_db
+      enrichAPICaptainPhones();
       document.getElementById('tb-api').textContent=apiShipments.length;
     }
     const logCached=localStorage.getItem('api_fetch_log');
