@@ -2118,37 +2118,12 @@ async function uploadShipments(rows,forceStatus){
 // ══════════════════════════════════════════
 // API INTEGRATION
 // ══════════════════════════════════════════
-// CORS proxy for external APIs
+// CORS proxy via Cloudflare Worker
+const PROXY='https://misty-wildflower-54d1.medodaw519.workers.dev';
 async function apiFetch(url,token){
   const cleanToken=token?token.replace(/^(Bearer|Token)\s*/i,'').trim():'';
-  
-  // Try direct with different header formats
-  const headerVariants=[
-    {'Accept':'application/json','Authorization':'Token '+cleanToken},
-    {'Accept':'application/json','Authorization':'Bearer '+cleanToken},
-    {'Accept':'application/json','Api-Token':cleanToken},
-  ];
-  for(const headers of headerVariants){
-    try{
-      const r=await fetch(url,{method:'GET',headers});
-      if(r.ok)return r;
-    }catch(e){}
-  }
-  
-  // Try corsproxy.io with Token auth
-  for(const authVal of ['Token '+cleanToken,'Bearer '+cleanToken]){
-    try{
-      const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(url),{
-        method:'GET',
-        headers:{'Accept':'application/json','Authorization':authVal}
-      });
-      if(r.ok)return r;
-    }catch(e){}
-  }
-  
-  // Last resort: token in URL via allorigins
-  const sep=url.includes('?')?'&':'?';
-  const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url+sep+'token='+cleanToken));
+  const proxyUrl=`${PROXY}?url=${encodeURIComponent(url)}&token=${encodeURIComponent(cleanToken)}`;
+  const r=await fetch(proxyUrl,{method:'GET',headers:{'Accept':'application/json'}});
   return r;
 }
 async function testAPI(){
