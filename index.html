@@ -2261,9 +2261,9 @@ async function uploadShipments(rows,forceStatus){
 // ══════════════════════════════════════════
 // CORS proxy via Cloudflare Worker
 const PROXY='https://misty-wildflower-54d1.medodaw519.workers.dev';
-async function apiFetch(url,token){
+async function apiFetch(fullUrl,token){
   const cleanToken=token?token.replace(/^(Bearer|Token)\s*/i,'').trim():'';
-  const proxyUrl=`${PROXY}?url=${encodeURIComponent(url)}&token=${encodeURIComponent(cleanToken)}`;
+  const proxyUrl=`${PROXY}?url=${encodeURIComponent(fullUrl)}&token=${encodeURIComponent(cleanToken)}`;
   const r=await fetch(proxyUrl,{method:'GET',headers:{'Accept':'application/json'}});
   return r;
 }
@@ -2300,10 +2300,10 @@ async function fetchFromAPI(){
     while(pg<20){
       pg++;
       const sep=url.includes('?')?'&':'?';
-      const fUrl=cursor?`${url}${sep}cursor=${cursor}`:url;
+      const fullUrl=cursor?`${url}${sep}cursor=${cursor}`:url;
       el.textContent=`⏳ صفحة ${pg}...`;
       try{
-        const res=await apiFetch(fUrl,token);
+        const res=await apiFetch(fullUrl,token);
         if(!res.ok){if(pg>1)break;throw new Error(`HTTP ${res.status}`);}
         const json=await res.json();
         const pageData=Array.isArray(json)?json:json?.data||json?.results||json?.orders||json?.shipments||[];
@@ -2795,27 +2795,25 @@ async function fetchAPIShipments(){
 
     while(pageNum<maxPages){
       pageNum++;
+      // Build full API URL with cursor parameter
       const sep=url.includes('?')?'&':'?';
-      const fetchUrl=cursor?`${url}${sep}cursor=${cursor}`:url;
+      const fullUrl=cursor?`${url}${sep}cursor=${cursor}`:url;
       if(el)el.textContent=`⏳ جارٍ جلب الصفحة ${pageNum}...`;
 
       try{
-        const res=await apiFetch(fetchUrl,token);
+        const res=await apiFetch(fullUrl,token);
         if(!res.ok){
-          // If page 2+ fails, just stop — we have data from previous pages
           if(pageNum>1){console.warn('API pagination stopped at page '+pageNum+': HTTP '+res.status);break;}
           throw new Error(`HTTP ${res.status}`);
         }
         const json=await res.json();
 
-        // Extract data array
         const pageData=Array.isArray(json)?json:json?.data||json?.results||json?.orders||json?.shipments||[];
         if(pageData.length)rawData=rawData.concat(pageData);
 
-        // Check for next page (cursor pagination)
         const nextCursor=json?.meta?.next_cursor||json?.next_cursor||null;
         if(!nextCursor||!pageData.length){
-          break; // No more pages
+          break;
         }
         cursor=nextCursor;
       }catch(pgErr){
