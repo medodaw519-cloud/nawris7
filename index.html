@@ -2120,30 +2120,36 @@ async function uploadShipments(rows,forceStatus){
 // ══════════════════════════════════════════
 // CORS proxy for external APIs
 async function apiFetch(url,token){
-  const headers={'Accept':'application/json'};
-  if(token){
-    const cleanToken=token.replace(/^Bearer\s*/i,'');
-    headers['Authorization']='Bearer '+cleanToken;
-    headers['Api-Token']=cleanToken;
-    headers['api-token']=cleanToken;
-    headers['X-Api-Key']=cleanToken;
+  const cleanToken=token?token.replace(/^(Bearer|Token)\s*/i,'').trim():'';
+  
+  // Try direct with different header formats
+  const headerVariants=[
+    {'Accept':'application/json','Authorization':'Token '+cleanToken},
+    {'Accept':'application/json','Authorization':'Bearer '+cleanToken},
+    {'Accept':'application/json','Api-Token':cleanToken},
+  ];
+  for(const headers of headerVariants){
+    try{
+      const r=await fetch(url,{method:'GET',headers});
+      if(r.ok)return r;
+    }catch(e){}
   }
-  // Try direct first
-  try{
-    const r=await fetch(url,{method:'GET',headers});
-    if(r.ok)return r;
-  }catch(e){}
-  // Try corsproxy.io
-  try{
-    const r2=await fetch('https://corsproxy.io/?'+encodeURIComponent(url),{method:'GET',headers});
-    if(r2.ok)return r2;
-  }catch(e){}
-  // Try allorigins with token in header workaround
+  
+  // Try corsproxy.io with Token auth
+  for(const authVal of ['Token '+cleanToken,'Bearer '+cleanToken]){
+    try{
+      const r=await fetch('https://corsproxy.io/?'+encodeURIComponent(url),{
+        method:'GET',
+        headers:{'Accept':'application/json','Authorization':authVal}
+      });
+      if(r.ok)return r;
+    }catch(e){}
+  }
+  
+  // Last resort: token in URL via allorigins
   const sep=url.includes('?')?'&':'?';
-  const cleanToken=token?token.replace(/^Bearer\s*/i,''):'';
-  const urlWithToken=cleanToken?url+sep+'token='+cleanToken+'&api_token='+cleanToken:url;
-  const r3=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(urlWithToken));
-  return r3;
+  const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url+sep+'token='+cleanToken));
+  return r;
 }
 async function testAPI(){
   const url=document.getElementById('api-url')?.value?.trim();
