@@ -2119,28 +2119,31 @@ async function uploadShipments(rows,forceStatus){
 // API INTEGRATION
 // ══════════════════════════════════════════
 // CORS proxy for external APIs
-function proxyUrl(url){
-  // Use allorigins as CORS proxy
-  return 'https://api.allorigins.win/raw?url='+encodeURIComponent(url);
-}
 async function apiFetch(url,token){
-  // First try direct
   const headers={'Accept':'application/json'};
   if(token){
-    headers['Authorization']=token.startsWith('Bearer ')?token:'Bearer '+token;
-    headers['Api-Token']=token.replace(/^Bearer\s*/i,'');
-    headers['api-token']=token.replace(/^Bearer\s*/i,'');
-    headers['X-Api-Key']=token.replace(/^Bearer\s*/i,'');
+    const cleanToken=token.replace(/^Bearer\s*/i,'');
+    headers['Authorization']='Bearer '+cleanToken;
+    headers['Api-Token']=cleanToken;
+    headers['api-token']=cleanToken;
+    headers['X-Api-Key']=cleanToken;
   }
+  // Try direct first
   try{
     const r=await fetch(url,{method:'GET',headers});
     if(r.ok)return r;
   }catch(e){}
-  // If direct fails (CORS), use proxy — append token to URL
+  // Try corsproxy.io
+  try{
+    const r2=await fetch('https://corsproxy.io/?'+encodeURIComponent(url),{method:'GET',headers});
+    if(r2.ok)return r2;
+  }catch(e){}
+  // Try allorigins with token in header workaround
   const sep=url.includes('?')?'&':'?';
-  const urlWithToken=token?url+sep+'api_token='+encodeURIComponent(token.replace(/^Bearer\s*/i,'')):url;
-  const r2=await fetch(proxyUrl(urlWithToken));
-  return r2;
+  const cleanToken=token?token.replace(/^Bearer\s*/i,''):'';
+  const urlWithToken=cleanToken?url+sep+'token='+cleanToken+'&api_token='+cleanToken:url;
+  const r3=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(urlWithToken));
+  return r3;
 }
 async function testAPI(){
   const url=document.getElementById('api-url')?.value?.trim();
