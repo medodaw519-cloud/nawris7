@@ -415,9 +415,25 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
       <div class="kcard blu"><div class="klbl">في الشركة</div><div class="kval" id="k-comp">0</div></div>
       <div class="kcard orn"><div class="klbl">مرتجعة</div><div class="kval" id="k-ret">0</div></div>
     </div>
+
+    <!-- API Shipments Summary -->
+    <div class="card" style="margin-bottom:16px;border-right:3px solid var(--pur)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+        <div class="ctitle" style="margin-bottom:0">🔗 ملخص طرود API</div>
+        <button class="btn btn-pur btn-sm" onclick="gTab('api-shipments')" style="font-size:11px">عرض الكل ←</button>
+      </div>
+      <div class="kgrid" style="margin-bottom:0" id="h-api-kpis">
+        <div style="background:var(--prd);border:1px solid var(--prb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--pur);font-family:var(--mono)" id="h-ak-total">0</div><div style="font-size:11px;color:var(--mute)">إجمالي طرود API</div></div>
+        <div style="background:var(--rd);border:1px solid var(--rb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--red);font-family:var(--mono)" id="h-ak-crit">0</div><div style="font-size:11px;color:var(--mute)">حرج +15 يوم</div></div>
+        <div style="background:var(--gd);border:1px solid var(--gb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--gold);font-family:var(--mono)" id="h-ak-warn">0</div><div style="font-size:11px;color:var(--mute)">تحذير 7-15 يوم</div></div>
+        <div style="background:var(--grd);border:1px solid var(--grb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--grn);font-family:var(--mono)" id="h-ak-driver">0</div><div style="font-size:11px;color:var(--mute)">مع المندوب</div></div>
+        <div style="background:var(--bld);border:1px solid var(--blb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--blu);font-family:var(--mono)" id="h-ak-comp">0</div><div style="font-size:11px;color:var(--mute)">في الشركة</div></div>
+      </div>
+    </div>
+
     <div class="g2">
-      <div class="card"><div class="ctitle">🏴 أكثر المناطق تأخيراً</div><div id="area-lb"></div></div>
-      <div class="card"><div class="ctitle">👤 المناديب الأكثر تأخيراً</div><div id="drv-lb"></div></div>
+      <div class="card"><div class="ctitle">🏴 أكثر المناطق تأخيراً (API)</div><div id="area-lb"></div></div>
+      <div class="card"><div class="ctitle">👤 المناديب الأكثر تأخيراً (API)</div><div id="drv-lb"></div></div>
     </div>
   </div>
 
@@ -808,6 +824,14 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
     <div class="card" style="margin-top:12px">
       <div class="ctitle">📊 ملخص نتائج التواصل لكل الطرود</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px" id="staff-cr-summary"></div>
+    </div>
+    <!-- API Captains Performance -->
+    <div class="card" style="margin-top:12px;border-right:3px solid var(--pur)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="ctitle" style="margin-bottom:0">🔗 أداء المناديب — طرود API</div>
+        <span id="staff-api-total" class="badge b-pur">0 طرد</span>
+      </div>
+      <div id="staff-api-captains"></div>
     </div>
   </div>
 
@@ -1622,9 +1646,22 @@ function updateKPIs(){
   document.getElementById('k-comp').textContent=comp;
   document.getElementById('k-ret').textContent=ret;
   document.getElementById('tb-crit').textContent=crit;
-  const ud=[...new Set(shipments.map(s=>s.driver_name).filter(Boolean))];
+  // API KPIs on home
+  const akCrit=apiShipments.filter(s=>cls(s.delay_days)==='critical').length;
+  const akWarn=apiShipments.filter(s=>cls(s.delay_days)==='warning').length;
+  const akDrv=apiShipments.filter(s=>s.status==='with_driver').length;
+  const akComp=apiShipments.filter(s=>s.status==='in_company').length;
+  const hak=id=>document.getElementById(id);
+  if(hak('h-ak-total'))hak('h-ak-total').textContent=apiShipments.length;
+  if(hak('h-ak-crit'))hak('h-ak-crit').textContent=akCrit;
+  if(hak('h-ak-warn'))hak('h-ak-warn').textContent=akWarn;
+  if(hak('h-ak-driver'))hak('h-ak-driver').textContent=akDrv;
+  if(hak('h-ak-comp'))hak('h-ak-comp').textContent=akComp;
+  // Hero counts: combine both sources
+  const allTotal=shipments.length+apiShipments.length;
+  const ud=[...new Set([...shipments.map(s=>s.driver_name),...apiShipments.map(s=>s.captain)].filter(Boolean))];
   const tc=ud.length||drivers_db.length||1;
-  document.getElementById('h-total').textContent=shipments.length;
+  document.getElementById('h-total').textContent=allTotal;
   document.getElementById('h-drivers').textContent=tc;
   const pct=Math.round(contacted.size/tc*100);
   document.getElementById('h-pct').textContent=pct+'%';
@@ -1632,7 +1669,8 @@ function updateKPIs(){
   document.getElementById('h-ct').textContent=contacted.size;
   document.getElementById('h-tc').textContent=tc;
   const ab=document.getElementById('alert-banner');
-  if(crit>0){ab.style.display='flex';document.getElementById('alert-title').textContent=`${crit} طرد في خطر حرج (+${CFG.critDays} يوم)!`;}
+  const totalCrit=crit+akCrit;
+  if(totalCrit>0){ab.style.display='flex';document.getElementById('alert-title').textContent=`${totalCrit} طرد في خطر حرج (+${CFG.critDays} يوم)!`;}
   else ab.style.display='none';
 }
 
@@ -1644,9 +1682,25 @@ function renderHome(){
   const h=new Date().getHours();
   const userName=CU?.name||'';
   document.getElementById('greeting').textContent=(h<12?'صباح الخير':h<17?'مساء الخير':'مساء النور')+` ${userName} 👋`;
-  const crit=shipments.filter(s=>cls(s.delay_days)==='critical');
-  renderLB('area-lb',crit,'region_name','var(--red)');
-  renderLB('drv-lb',crit,'driver_name','var(--gold)');
+  // Use API shipments for leaderboards (more data)
+  const apiCrit=apiShipments.filter(s=>cls(s.delay_days)!=='ok');
+  const apiAll=apiShipments.length?apiCrit:shipments.filter(s=>cls(s.delay_days)==='critical');
+  renderLB('area-lb',apiAll,'government','var(--red)');
+  renderLBCaptain('drv-lb',apiShipments);
+}
+function renderLBCaptain(id,data){
+  const map={};
+  data.forEach(s=>{
+    const k=s.captain||'—';if(!k||k==='—')return;
+    if(!map[k])map[k]={total:0,late:0};
+    map[k].total++;
+    if(cls(s.delay_days)!=='ok')map[k].late++;
+  });
+  const sorted=Object.entries(map).sort((a,b)=>b[1].late-a[1].late).slice(0,6);
+  const max=sorted[0]?.[1]?.late||1;
+  const el=document.getElementById(id);
+  if(!sorted.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--mute)">✅ لا تأخيرات</div>';return;}
+  el.innerHTML=sorted.map(([n,c],i)=>`<div class="lbi"><div class="lbr">#${i+1}</div><div class="lbn" title="${n}">${n}</div><div class="lbbar"><div class="lbfill" style="width:${c.late/max*100}%;background:var(--gold)"></div></div><div class="lbv" style="color:var(--gold)">${c.late}<span style="font-size:10px;color:var(--mute)">/${c.total}</span></div></div>`).join('');
 }
 function renderLB(id,data,key,color){
   const map={};data.forEach(s=>{const k=s[key]||'—';map[k]=(map[k]||0)+1;});
@@ -3049,12 +3103,16 @@ function renderStaff(){
     } else totalNone++;
   });
 
+  const combinedTotal=shipments.length+apiShipments.length;
+
   // KPIs
   document.getElementById('staff-kpis').innerHTML=`
-    <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--gold);font-family:var(--mono)">${shipments.length}</div><div style="font-size:11px;color:var(--mute)">إجمالي الطرود</div></div>
+    <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--gold);font-family:var(--mono)">${shipments.length}</div><div style="font-size:11px;color:var(--mute)">طرود Supabase</div></div>
+    <div style="background:var(--prd);border:1px solid var(--prb);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--pur);font-family:var(--mono)">${apiShipments.length}</div><div style="font-size:11px;color:var(--mute)">طرود API</div></div>
+    <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--white);font-family:var(--mono)">${combinedTotal}</div><div style="font-size:11px;color:var(--mute)">الإجمالي الكلي</div></div>
     <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--grn);font-family:var(--mono)">${totalFollowed}</div><div style="font-size:11px;color:var(--mute)">تمت متابعتها</div></div>
     <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--red);font-family:var(--mono)">${totalNone}</div><div style="font-size:11px;color:var(--mute)">بدون متابعة</div></div>
-    <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--pur);font-family:var(--mono)">${shipments.length?Math.round(totalFollowed/shipments.length*100):0}%</div><div style="font-size:11px;color:var(--mute)">نسبة الإنجاز</div></div>
+    <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--pur);font-family:var(--mono)">${combinedTotal?Math.round(totalFollowed/combinedTotal*100):0}%</div><div style="font-size:11px;color:var(--mute)">نسبة الإنجاز</div></div>
   `;
 
   // Per-employee stats + shipment list
@@ -3108,6 +3166,46 @@ function renderStaff(){
     <div style="background:var(--gd);border:1px solid var(--gb);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--gold);font-family:var(--mono)">${totalPending}</div><div style="font-size:11px;color:var(--gold)">⏳ قيد المتابعة</div></div>
     <div style="background:var(--bg4);border:1px solid var(--rim);border-radius:var(--r2);padding:14px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--mute);font-family:var(--mono)">${totalNone}</div><div style="font-size:11px;color:var(--mute)">بدون متابعة</div></div>
   `;
+
+  // ── API Captains Performance ──
+  const capEl=document.getElementById('staff-api-captains');
+  const capTotal=document.getElementById('staff-api-total');
+  if(capEl){
+    if(!apiShipments.length){
+      capEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--mute)">لا توجد طرود API — اضغط "جلب الآن" من تبويب طرود API</div>';
+      if(capTotal)capTotal.textContent='0 طرد';
+    } else {
+      if(capTotal)capTotal.textContent=apiShipments.length+' طرد';
+      const capMap={};
+      apiShipments.forEach(s=>{
+        const k=s.captain||'غير محدد';
+        if(!capMap[k])capMap[k]={name:k,total:0,critical:0,warning:0,ok:0,returned:0,branch:s.current_branch||''};
+        capMap[k].total++;
+        const cl=cls(s.delay_days);
+        if(cl==='critical')capMap[k].critical++;
+        else if(cl==='warning')capMap[k].warning++;
+        else capMap[k].ok++;
+        if(s.status==='returned')capMap[k].returned++;
+      });
+      const sorted=Object.values(capMap).sort((a,b)=>b.critical-a.critical||b.total-a.total);
+      capEl.innerHTML=`<div class="tw"><table>
+        <thead><tr><th>المندوب</th><th>الإجمالي</th><th style="color:var(--red)">🔴 حرج</th><th style="color:var(--gold)">🟡 تحذير</th><th style="color:var(--grn)">🟢 في الموعد</th><th style="color:var(--orn)">↩️ مرتجع</th><th>التقدم</th></tr></thead>
+        <tbody>${sorted.map(c=>{
+          const pct=c.total?Math.round(c.ok/c.total*100):0;
+          const pc=pct>70?'var(--grn)':pct>40?'var(--gold)':'var(--red)';
+          return`<tr>
+            <td><strong>${c.name}</strong>${c.branch?`<div style="font-size:10px;color:var(--dim)">${c.branch}</div>`:''}</td>
+            <td style="font-family:var(--mono);font-weight:700">${c.total}</td>
+            <td style="color:var(--red);font-weight:700">${c.critical||'—'}</td>
+            <td style="color:var(--gold);font-weight:700">${c.warning||'—'}</td>
+            <td style="color:var(--grn);font-weight:700">${c.ok||'—'}</td>
+            <td style="color:var(--orn);font-weight:700">${c.returned||'—'}</td>
+            <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;background:var(--bg5);border-radius:99px;height:6px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${pc};border-radius:99px"></div></div><span style="font-size:11px;font-weight:700;color:${pc};font-family:var(--mono)">${pct}%</span></div></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`;
+    }
+  }
 }
 
 // ══════════════════════════════════════════
@@ -3395,6 +3493,9 @@ async function fetchAPIShipments(){
     renderAPIShipments();
     updateAPIKPIs();
     renderAPIFetchLog();
+    updateKPIs();
+    renderHome();
+    renderStaff();
     toast(`✅ ${apiShipments.length} طرد من API`,'s');
 
   }catch(e){
@@ -3861,9 +3962,9 @@ function loadCachedAPIShipments(){
     const cached=localStorage.getItem('api_shipments');
     if(cached){
       apiShipments=JSON.parse(cached);
-      // Re-enrich captain phones from current drivers_db
       enrichAPICaptainPhones();
       document.getElementById('tb-api').textContent=apiShipments.length;
+      updateKPIs();
     }
     const logCached=localStorage.getItem('api_fetch_log');
     if(logCached)apiFetchLog=JSON.parse(logCached);
