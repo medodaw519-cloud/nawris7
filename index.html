@@ -1039,7 +1039,12 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
       <input type="hidden" id="um-edit-key">
       <div class="g2">
         <div class="fg"><label class="fl">اسم المستخدم (للدخول)</label><input class="fi" style="width:100%" id="um-username" placeholder="مثال: ahmed" dir="ltr"></div>
-        <div class="fg"><label class="fl">كلمة المرور</label><input class="fi" style="width:100%" id="um-pass" placeholder="كلمة مرور قوية" type="password"></div>
+        <div class="fg"><label class="fl">كلمة المرور</label>
+          <div style="position:relative">
+            <input class="fi" style="width:100%;padding-left:36px" id="um-pass" placeholder="كلمة مرور قوية" type="text" dir="ltr">
+            <button type="button" onclick="togglePassVis()" id="um-pass-toggle" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;color:var(--mute)">👁️</button>
+          </div>
+        </div>
       </div>
       <div class="g2">
         <div class="fg"><label class="fl">الاسم الكامل</label><input class="fi" style="width:100%" id="um-name" placeholder="الاسم بالعربي"></div>
@@ -3925,8 +3930,8 @@ function openUserModal(editKey){
     const u=USERS[editKey];
     document.getElementById('user-modal-title').textContent='تعديل المستخدم: '+u.name;
     document.getElementById('um-username').value=editKey;
-    document.getElementById('um-username').disabled=true;
     document.getElementById('um-pass').value=u.pass;
+    document.getElementById('um-pass').type='text';
     document.getElementById('um-name').value=u.name||'';
     document.getElementById('um-role').value=u.role||'employee';
     document.getElementById('um-phone').value=u.phone||'';
@@ -3941,8 +3946,8 @@ function openUserModal(editKey){
   } else {
     document.getElementById('user-modal-title').textContent='إضافة مستخدم جديد';
     document.getElementById('um-username').value='';
-    document.getElementById('um-username').disabled=false;
     document.getElementById('um-pass').value='';
+    document.getElementById('um-pass').type='text';
     document.getElementById('um-name').value='';
     document.getElementById('um-role').value='employee';
     document.getElementById('um-phone').value='';
@@ -3957,6 +3962,13 @@ function openUserModal(editKey){
   document.getElementById('user-modal').classList.add('on');
 }
 function editUser(k){openUserModal(k);}
+
+function togglePassVis(){
+  const inp=document.getElementById('um-pass');
+  const btn=document.getElementById('um-pass-toggle');
+  if(inp.type==='password'){inp.type='text';btn.textContent='🙈';}
+  else{inp.type='password';btn.textContent='👁️';}
+}
 
 function onRoleChange(){
   const role=document.getElementById('um-role').value;
@@ -3993,8 +4005,8 @@ function saveUser(){
   if(!pass){toast('أدخل كلمة المرور','w');return;}
   if(!name){toast('أدخل الاسم الكامل','w');return;}
   if(username.includes(' ')){toast('اسم المستخدم لا يحتوي مسافات','w');return;}
-  // Check duplicate username on add
-  if(!editKey&&USERS[username]){toast('اسم المستخدم موجود مسبقاً','w');return;}
+  // Check duplicate username (only if new or renamed)
+  if(username!==editKey&&USERS[username]){toast('اسم المستخدم موجود مسبقاً','w');return;}
 
   // Collect permissions
   let perms=[];
@@ -4005,13 +4017,21 @@ function saveUser(){
     if(!perms.includes('home')) perms.unshift('home');
   }
 
-  const key=editKey||username;
-  USERS[key]={pass,role,name,phone,email,status,perms};
+  // If username changed (rename), delete old key
+  if(editKey&&editKey!==username){
+    delete USERS[editKey];
+    // If renaming self, update session
+    if(CU&&CU.username===editKey){
+      CU.username=username;
+    }
+  }
+
+  USERS[username]={pass,role,name,phone,email,status,perms};
   saveUsers(USERS);
 
   // If editing self, update session
-  if(CU&&CU.username===key){
-    CU={username:key,...USERS[key]};
+  if(CU&&(CU.username===username||CU.username===editKey)){
+    CU={username,...USERS[username]};
     sessionStorage.setItem('nu',JSON.stringify(CU));
     applyRole();
   }
