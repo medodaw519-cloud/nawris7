@@ -21,6 +21,51 @@
   --font:'Tajawal',sans-serif;--mono:'IBM Plex Mono',monospace;
   --r:12px;--r2:8px;--r3:6px;
 }
+/* ── LIGHT THEME ── */
+html.light{
+  --bg:#f5f6fa;--bg2:#ffffff;--bg3:#ffffff;--bg4:#f0f1f5;--bg5:#e4e6ee;
+  --rim:#d8dbe5;--rim2:#c8ccd8;--dim:#7a7f96;--mute:#6b7085;--pale:#3d4158;--white:#1a1d2e;
+  --gold:#d4a017;--gd:rgba(212,160,23,.12);--gb:rgba(212,160,23,.25);
+  --red:#e02d4a;--rd:rgba(224,45,74,.1);--rb:rgba(224,45,74,.22);
+  --grn:#17a06e;--grd:rgba(23,160,110,.1);--grb:rgba(23,160,110,.2);
+  --blu:#3268d8;--bld:rgba(50,104,216,.1);--blb:rgba(50,104,216,.22);
+  --orn:#d4621a;--ord:rgba(212,98,26,.1);
+  --pur:#7c4ddb;--prd:rgba(124,77,219,.1);--prb:rgba(124,77,219,.22);
+  --wa:#1da851;
+}
+html.light body{color:var(--white)}
+html.light .topbar{box-shadow:0 1px 4px rgba(0,0,0,.06)}
+html.light .hero{background:linear-gradient(135deg,#eee5ff 0%,#e0ecff 50%,#dff5f0 100%);border-color:var(--rim2)}
+html.light .hero::before{background:radial-gradient(circle,rgba(124,77,219,.08),transparent 65%)}
+html.light .kcard{box-shadow:0 1px 3px rgba(0,0,0,.04)}
+html.light .card{box-shadow:0 1px 3px rgba(0,0,0,.04)}
+html.light .modal{background:var(--bg2);box-shadow:0 8px 40px rgba(0,0,0,.15)}
+html.light .overlay{background:rgba(0,0,0,.35)}
+html.light .lbox{background:var(--bg2);box-shadow:0 4px 40px rgba(0,0,0,.1)}
+html.light .toast{background:var(--bg2);box-shadow:0 2px 12px rgba(0,0,0,.08)}
+html.light .tclock{background:var(--bg4);color:var(--pale)}
+html.light #loading{background:var(--bg)}
+html.light #login-screen{background:var(--bg)}
+html.light .spinner{border-color:var(--rim);border-top-color:var(--pur)}
+html.light .tav{box-shadow:0 1px 4px rgba(0,0,0,.1)}
+html.light .upz{background:var(--bg4);border-color:var(--rim2)}
+html.light .alert-banner{background:linear-gradient(90deg,rgba(224,45,74,.08),transparent)}
+html.light thead th{background:var(--bg4);color:var(--dim)}
+html.light tbody tr.pr:hover td{background:rgba(124,77,219,.04)}
+html.light ::-webkit-scrollbar-thumb{background:var(--rim2)}
+html.light .seg{background:var(--bg4);border-color:var(--rim);color:var(--mute)}
+html.light .seg.on{background:var(--pur);color:#fff;border-color:var(--pur)}
+html.light .hprog-track{background:rgba(0,0,0,.07)}
+html.light .btn-ghost{background:var(--bg4);color:var(--pale);border-color:var(--rim)}
+html.light .pgbtn{background:var(--bg4);border-color:var(--rim);color:var(--pale)}
+html.light .abtn{background:var(--bg4);border-color:var(--rim);color:var(--mute)}
+html.light .fi{background:var(--bg4);border-color:var(--rim);color:var(--white)}
+html.light .lbox input[type=text],html.light .lbox input[type=password]{background:var(--bg4);border-color:var(--rim);color:var(--white)}
+
+/* Theme toggle button */
+.theme-toggle{background:none;border:1px solid var(--rim);color:var(--mute);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all .2s;flex-shrink:0}
+.theme-toggle:hover{border-color:var(--pur);color:var(--pur)}
+
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--font);background:var(--bg);color:var(--white);min-height:100vh;font-size:14px;overflow-x:hidden}
 
@@ -243,6 +288,7 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
     <div class="tspace"></div>
     <span class="sync-dot" id="sync-dot"></span>
     <span id="sync-txt" style="font-size:11px;color:var(--mute)">متصل</span>
+    <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="تبديل المظهر">🌙</button>
     <div class="tclock" id="clock">--:--</div>
     <div class="tav" id="uav">م</div>
     <span class="tuname" id="uname">—</span>
@@ -978,6 +1024,28 @@ let WA_TPLS=[
   {id:'delivery',name:'تأكيد التسليم',tag:'تسليم',body:'السلام عليكم {اسم}\n\nتم تسليم الطرد رقم: {كود}\nللعميل: {عميل}\nبتاريخ: {تاريخ}\n\n✅ يرجى تأكيد الاستلام\n— {شركة}'},
   {id:'praise',name:'تهنئة أداء',tag:'تحفيزي',body:'👏 أحسنت يا {اسم}!\nشكراً على أدائك المتميز 💪\n— إدارة {شركة}'},
 ];
+
+// ══════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════
+function initTheme(){
+  const saved=localStorage.getItem('nawris_theme');
+  if(saved==='light'){document.documentElement.classList.add('light');updateThemeBtn();}
+}
+function toggleTheme(){
+  document.documentElement.classList.toggle('light');
+  const isLight=document.documentElement.classList.contains('light');
+  localStorage.setItem('nawris_theme',isLight?'light':'dark');
+  updateThemeBtn();
+}
+function updateThemeBtn(){
+  const btn=document.getElementById('theme-btn');
+  if(!btn)return;
+  const isLight=document.documentElement.classList.contains('light');
+  btn.textContent=isLight?'☀️':'🌙';
+  btn.title=isLight?'التبديل للوضع الداكن':'التبديل للوضع الفاتح';
+}
+initTheme();
 
 // ══════════════════════════════════════════
 // SUPABASE
