@@ -293,9 +293,19 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--rim2);border-radius:3px}
+/* ── STAGING BANNER ── */
+#staging-banner{position:fixed;top:0;left:0;right:0;z-index:99999;background:repeating-linear-gradient(45deg,#f5c842,#f5c842 10px,#1a1600 10px,#1a1600 20px);padding:5px 0;text-align:center;font-size:12px;font-weight:800;color:#f5c842;letter-spacing:1px;box-shadow:0 2px 10px rgba(245,200,66,.4)}
+#staging-banner span{background:#1a1600;padding:3px 16px;border-radius:99px;border:1px solid rgba(245,200,66,.5)}
+body:has(#staging-banner) #app{padding-top:30px}
+body:has(#staging-banner) #login-screen{padding-top:30px}
 </style>
 </head>
 <body>
+
+<!-- STAGING INDICATOR -->
+<div id="staging-banner">
+  <span>🧪 بيئة تجريبية — التغييرات هنا لم تُطبَّق على النسخة الأصلية بعد</span>
+</div>
 
 <!-- LOADING -->
 <div id="loading">
