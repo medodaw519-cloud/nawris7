@@ -3242,7 +3242,16 @@ function apiWA(sid,target){
     openWAUrl(ph,msg);
   } else {
     const ph=normPhone(s.customer_phone||'');
-    const msg=`السلام عليكم ${s.receiver_name||s.client_name||''}\n🕊️ ${CFG.company}\n\nبخصوص طردكم رقم: ${s.tracking_code}\nالمتجر: ${s.client_name||'—'}\nالحالة: ${stLabel}\nالتأخير: ${s.delay_days} يوم\n${s.captain?'المندوب: '+s.captain+'\n':''}${s.current_branch?'الفرع: '+s.current_branch+'\n':''}\nللاستفسار تواصلوا معنا.\n— ${CFG.company}`;
+    // Get branch manager phone for customer service
+    let branchPhone='';
+    if(s.current_branch){
+      const brn=branches.find(b=>b.name&&(b.name===s.current_branch||b.name.includes(s.current_branch)||s.current_branch.includes(b.name)));
+      if(brn)branchPhone=brn.manager_phone||'';
+    }
+    const capName=s.captain||'المندوب';
+    const capPh=s.captain_phone?'\nرقم المندوب: '+s.captain_phone:'';
+    const brPh=branchPhone?'\n\nللاستفسار يمكنكم التواصل مع فرع '+s.current_branch+' على الرقم: '+branchPhone:'';
+    const msg=`السلام عليكم ورحمة الله وبركاته\n${s.receiver_name||s.client_name||''} حياكم الله 🕊️\n\nنود إعلامكم من شركة ${CFG.company} أن طردكم رقم: ${s.tracking_code}\nموجود حالياً مع المندوب: ${capName}${capPh}\n\nوسيتم التواصل معكم لتنسيق موعد التسليم في أقرب وقت إن شاء الله.${brPh}\n\nشكراً لثقتكم بنا 🙏\n— ${CFG.company}`;
     openWAUrl(ph,msg);
   }
 }
