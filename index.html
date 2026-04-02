@@ -634,6 +634,42 @@ body:has(#staging-banner) #login-screen{padding-top:30px}
         <button class="btn btn-pur btn-sm" onclick="fetchAPIShipments()">⬇️ جلب الآن</button>
         <button class="btn btn-ghost btn-sm" onclick="renderAPIShipments()">↻ تحديث العرض</button>
         <button class="btn btn-wa btn-sm" onclick="bulkWA_API()">💬 واتساب للمحددين</button>
+        <button class="btn btn-gold btn-sm manager-only" onclick="openAssignPanel()">👥 توزيع الطرود</button>
+      </div>
+    </div>
+
+    <!-- Assignment Panel (manager only) -->
+    <div class="card manager-only" id="assign-panel" style="display:none;border-right:3px solid var(--gold);margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <div class="ctitle" style="margin-bottom:0">👥 توزيع الطرود على الموظفين</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeAssignPanel()">✕ إغلاق</button>
+      </div>
+      <!-- Stats per employee -->
+      <div id="assign-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px"></div>
+      <!-- Auto distribution -->
+      <div style="border-top:1px solid var(--rim);padding-top:12px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--pale);margin-bottom:8px">⚡ التوزيع التلقائي</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <button class="btn btn-pur btn-sm" onclick="autoAssign('equal')">⚖️ توزيع متساوي</button>
+          <button class="btn btn-blu btn-sm" onclick="autoAssign('branch')">🏢 حسب الفرع</button>
+          <button class="btn btn-orn btn-sm" onclick="autoAssign('workload')">📊 حسب الحمل</button>
+          <button class="btn btn-red btn-sm" onclick="clearAllAssignments()">🗑️ مسح التوزيع</button>
+        </div>
+        <div style="margin-top:8px">
+          <label style="font-size:11px;color:var(--mute)">توزيع على:</label>
+          <div id="assign-emp-checks" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:5px"></div>
+        </div>
+      </div>
+      <!-- Manual: assign selected -->
+      <div style="border-top:1px solid var(--rim);padding-top:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--pale);margin-bottom:8px">✋ التعيين اليدوي (للمحددين في الجدول)</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="fi" id="manual-assign-emp" style="min-width:160px">
+            <option value="">اختر موظف...</option>
+          </select>
+          <button class="btn btn-gold btn-sm" onclick="assignSelected()">✅ تعيين المحددين</button>
+          <button class="btn btn-ghost btn-sm" onclick="unassignSelected()">✕ إلغاء تعيين المحددين</button>
+        </div>
       </div>
     </div>
 
@@ -672,9 +708,11 @@ body:has(#staging-banner) #login-screen{padding-top:30px}
     <!-- Segments -->
     <div class="segs">
       <div class="seg on" data-aseg="all">الكل <span class="seg-n" id="asn-all">0</span></div>
+      <div class="seg" data-aseg="mine">👤 مسنداتي <span class="seg-n" id="asn-mine">0</span></div>
       <div class="seg" data-aseg="driver">🚗 مع المندوب <span class="seg-n" id="asn-driver">0</span></div>
       <div class="seg" data-aseg="company">🏢 في الشركة <span class="seg-n" id="asn-comp">0</span></div>
       <div class="seg" data-aseg="late">🔴 متأخرة <span class="seg-n" id="asn-late">0</span></div>
+      <div class="seg manager-only" data-aseg="unassigned">⚠️ غير مسندة <span class="seg-n" id="asn-unassigned">0</span></div>
     </div>
 
     <!-- Filters -->
@@ -697,6 +735,7 @@ body:has(#staging-banner) #login-screen{padding-top:30px}
         <option value="returned">مرتجع</option>
         <option value="delivered">مُسلَّم</option>
       </select>
+      <select class="fi manager-only" id="a-femp" onchange="renderAPIShipments()" style="min-width:140px"><option value="">كل الموظفين</option></select>
       <select class="fi" id="a-fcap" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المناديب</option></select>
       <select class="fi" id="a-fbr" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل الفروع</option></select>
       <select class="fi" id="a-fgov" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المحافظات</option></select>
@@ -724,12 +763,12 @@ body:has(#staging-banner) #login-screen{padding-top:30px}
           <thead>
           <tr>
             <th><input type="checkbox" id="achk-all" onchange="toggleAllAPI(this)"></th>
-            <th>#</th><th>الكود</th><th>المتجر / العميل</th><th>المستلم</th><th>هاتف المستلم</th>
+            <th>#</th><th>الكود</th><th>المسند إلى</th><th>المتجر / العميل</th><th>المستلم</th><th>هاتف المستلم</th>
             <th>المندوب</th><th>الفرع</th><th>المحافظة</th><th>المنطقة</th>
             <th>الحالة</th><th>أيام التأخير</th><th>نتيجة التواصل</th><th>ملاحظة</th>
             <th>واتساب</th><th>حفظ</th><th>نقل للطرود</th>
           </tr></thead>
-          <tbody id="a-tbody"><tr><td colspan="17" style="text-align:center;padding:36px;color:var(--mute)">🔗 اضغط "جلب الآن" أو أعد إعدادات API من تبويب "رفع البيانات"</td></tr></tbody>
+          <tbody id="a-tbody"><tr><td colspan="18" style="text-align:center;padding:36px;color:var(--mute)">🔗 اضغط "جلب الآن" أو أعد إعدادات API من تبويب "رفع البيانات"</td></tr></tbody>
         </table>
       </div>
       <div style="padding:10px 16px;border-top:1px solid var(--rim);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -844,6 +883,14 @@ body:has(#staging-banner) #login-screen{padding-top:30px}
         <span id="staff-api-total" class="badge b-pur">0 طرد</span>
       </div>
       <div id="staff-api-captains"></div>
+    </div>
+    <!-- Employee API Assignment Summary -->
+    <div class="card" style="margin-top:12px;border-right:3px solid var(--gold)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div class="ctitle" style="margin-bottom:0">👥 توزيع طرود API على الموظفين</div>
+        <button class="btn btn-ghost btn-sm" onclick="gTab('api-shipments');setTimeout(openAssignPanel,200)">⚙️ إدارة التوزيع</button>
+      </div>
+      <div id="staff-assign-stats"></div>
     </div>
   </div>
 
@@ -3228,7 +3275,7 @@ function renderStaff(){
       });
       const sorted=Object.values(capMap).sort((a,b)=>b.critical-a.critical||b.total-a.total);
       capEl.innerHTML=`<div class="tw"><table>
-        <thead><tr><th>المندوب</th><th>الإجمالي</th><th style="color:var(--red)">🔴 حرج</th><th style="color:var(--gold)">🟡 تحذير</th><th style="color:var(--grn)">🟢 في الموعد</th><th style="color:var(--orn)">↩️ مرتجع</th><th>التقدم</th></tr></thead>
+        <thead><tr><th>المندوب</th><th>الإجمالي</th><th style="color:var(--red)">🔴 حرج</th><th style="color:var(--gold)">🟡 تحذير</th><th style="color:var(--grn)">🟢 في الموعد</th><th style="color:var(--orn)">↩️ مرتجع</th><th>نسبة التسليم</th></tr></thead>
         <tbody>${sorted.map(c=>{
           const pct=c.total?Math.round(c.ok/c.total*100):0;
           const pc=pct>70?'var(--grn)':pct>40?'var(--gold)':'var(--red)';
@@ -3242,6 +3289,52 @@ function renderStaff(){
             <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;background:var(--bg5);border-radius:99px;height:6px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${pc};border-radius:99px"></div></div><span style="font-size:11px;font-weight:700;color:${pc};font-family:var(--mono)">${pct}%</span></div></td>
           </tr>`;
         }).join('')}</tbody>
+      </table></div>`;
+    }
+  }
+
+  // ── Employee Assignment Summary ──
+  const assignStatsEl=document.getElementById('staff-assign-stats');
+  if(assignStatsEl){
+    const a=getAPIAssignments();
+    const empStats={};
+    Object.values(USERS).forEach(u=>{empStats[u.name]={name:u.name,total:0,crit:0,warn:0,done:0,pending:0,noAnswer:0};});
+    apiShipments.forEach(s=>{
+      const emp=a[s.tracking_code];
+      if(!emp)return;
+      if(!empStats[emp])empStats[emp]={name:emp,total:0,crit:0,warn:0,done:0,pending:0,noAnswer:0};
+      empStats[emp].total++;
+      if(cls(s.delay_days)==='critical')empStats[emp].crit++;
+      else if(cls(s.delay_days)==='warning')empStats[emp].warn++;
+      const cr=getCR(s.tracking_code);
+      if(cr.result==='solved'||cr.result==='contacted')empStats[emp].done++;
+      else if(cr.result==='pending')empStats[emp].pending++;
+      else if(cr.result==='no_answer')empStats[emp].noAnswer++;
+    });
+    const rows=Object.values(empStats).sort((a,b)=>b.total-a.total);
+    const unassigned=apiShipments.filter(s=>!a[s.tracking_code]).length;
+    if(!rows.some(r=>r.total>0)&&!unassigned){
+      assignStatsEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--mute)">لم يتم توزيع الطرود بعد — اذهب لتبويب طرود API ← توزيع الطرود</div>';
+    } else {
+      assignStatsEl.innerHTML=`<div class="tw"><table>
+        <thead><tr><th>الموظف</th><th>المسند</th><th style="color:var(--red)">حرج</th><th style="color:var(--gold)">تحذير</th><th style="color:var(--grn)">✅ منجز</th><th style="color:var(--gold)">⏳ قيد</th><th style="color:var(--red)">📵 لا يرد</th><th>نسبة الإنجاز</th></tr></thead>
+        <tbody>
+          ${unassigned?`<tr><td style="color:var(--mute)" colspan="8">⚠️ ${unassigned} طرد غير مسندة — <span style="color:var(--pur);cursor:pointer" onclick="gTab('api-shipments');setTimeout(openAssignPanel,200)">وزّعها الآن</span></td></tr>`:''}
+          ${rows.filter(r=>r.total>0).map(r=>{
+            const pct=r.total?Math.round(r.done/r.total*100):0;
+            const pc=pct>70?'var(--grn)':pct>40?'var(--gold)':'var(--red)';
+            return`<tr>
+              <td><strong>${r.name}</strong></td>
+              <td style="font-family:var(--mono);font-weight:800;color:var(--pur)">${r.total}</td>
+              <td style="color:var(--red)">${r.crit||'—'}</td>
+              <td style="color:var(--gold)">${r.warn||'—'}</td>
+              <td style="color:var(--grn)">${r.done||'—'}</td>
+              <td style="color:var(--gold)">${r.pending||'—'}</td>
+              <td style="color:var(--red)">${r.noAnswer||'—'}</td>
+              <td><div style="display:flex;align-items:center;gap:6px;min-width:100px"><div style="flex:1;background:var(--bg5);border-radius:99px;height:6px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${pc};border-radius:99px"></div></div><span style="font-size:11px;font-weight:700;color:${pc}">${pct}%</span></div></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
       </table></div>`;
     }
   }
@@ -3626,8 +3719,10 @@ function renderAPIShipments(){
   const fcap=document.getElementById('a-fcap')?.value||'';
   const fbr=document.getElementById('a-fbr')?.value||'';
   const fgov=document.getElementById('a-fgov')?.value||'';
+  const femp=document.getElementById('a-femp')?.value||'';
+  const assignments=getAPIAssignments();
 
-  // Build filter dropdowns from data
+  // Build filter dropdowns
   const caps=[...new Set(apiShipments.map(s=>s.captain).filter(Boolean))].sort();
   const brs=[...new Set(apiShipments.map(s=>s.current_branch).filter(Boolean))].sort();
   const govs=[...new Set(apiShipments.map(s=>s.government).filter(Boolean))].sort();
@@ -3637,13 +3732,30 @@ function renderAPIShipments(){
   if(brEl&&!fbr){brEl.innerHTML='<option value="">كل الفروع</option>'+brs.map(b=>`<option>${b}</option>`).join('');}
   const govEl=document.getElementById('a-fgov');
   if(govEl&&!fgov){govEl.innerHTML='<option value="">كل المحافظات</option>'+govs.map(g=>`<option>${g}</option>`).join('');}
+  const empEl=document.getElementById('a-femp');
+  if(empEl&&!femp){
+    const emps=Object.entries(USERS).filter(([,u])=>u.status!=='inactive').map(([,u])=>u.name);
+    empEl.innerHTML='<option value="">كل الموظفين</option>'+emps.map(e=>`<option>${e}</option>`).join('');
+  }
 
+  const myName=CU?.name||'';
   let list=[...apiShipments];
 
   // Segment filter
   if(apiSeg==='driver') list=list.filter(s=>s.status==='with_driver');
   else if(apiSeg==='company') list=list.filter(s=>s.status==='in_company');
   else if(apiSeg==='late') list=list.filter(s=>cls(s.delay_days)!=='ok');
+  else if(apiSeg==='mine') list=list.filter(s=>assignments[s.tracking_code]===myName);
+  else if(apiSeg==='unassigned') list=list.filter(s=>!assignments[s.tracking_code]);
+
+  // Update segment counts
+  const el=id=>document.getElementById(id);
+  if(el('asn-all'))el('asn-all').textContent=apiShipments.length;
+  if(el('asn-mine'))el('asn-mine').textContent=apiShipments.filter(s=>assignments[s.tracking_code]===myName).length;
+  if(el('asn-driver'))el('asn-driver').textContent=apiShipments.filter(s=>s.status==='with_driver').length;
+  if(el('asn-comp'))el('asn-comp').textContent=apiShipments.filter(s=>s.status==='in_company').length;
+  if(el('asn-late'))el('asn-late').textContent=apiShipments.filter(s=>cls(s.delay_days)!=='ok').length;
+  if(el('asn-unassigned'))el('asn-unassigned').textContent=apiShipments.filter(s=>!assignments[s.tracking_code]).length;
 
   list=list.filter(s=>{
     if(fd&&cls(s.delay_days)!==fd)return false;
@@ -3651,6 +3763,7 @@ function renderAPIShipments(){
     if(fcap&&s.captain!==fcap)return false;
     if(fbr&&s.current_branch!==fbr)return false;
     if(fgov&&s.government!==fgov)return false;
+    if(femp&&assignments[s.tracking_code]!==femp)return false;
     if(fdays){
       const d=s.delay_days||0;
       if(fdays==='0-5'&&(d<0||d>5))return false;
@@ -3671,7 +3784,7 @@ function renderAPIShipments(){
 
   const tbody=document.getElementById('a-tbody');
   if(!page.length){
-    tbody.innerHTML=`<tr><td colspan="17" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج — اضغط "جلب الآن" لجلب البيانات من API</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="18" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج — اضغط "جلب الآن" لجلب البيانات من API</td></tr>`;
     buildAPIPgn(total,totalP);
     return;
   }
@@ -3683,10 +3796,18 @@ function renderAPIShipments(){
     const note=(crData.note||'').replace(/"/g,'&quot;');
     const cResult=crData.result;
     const ph=s.customer_phone&&s.customer_phone!=='—'&&s.customer_phone!=='undefined';
-    return`<tr class="pr" data-asid="${sid}" onclick="openAPIDetail('${sid}')" style="cursor:pointer;${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}">
+    const assignedTo=assignments[s.tracking_code]||'';
+    const assignColor=assignedTo?'var(--grn)':'var(--dim)';
+    const isManager=CU?.role==='manager';
+    const empList=Object.values(USERS).filter(u=>u.status!=='inactive').map(u=>u.name);
+    const assignCell=isManager
+      ?`<select onclick="event.stopPropagation()" onchange="setAssignedTo('${tc}',this.value)" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 5px;font-size:10px;color:${assignColor};font-family:var(--font);min-width:80px"><option value="">—</option>${empList.map(e=>`<option value="${e}" ${e===assignedTo?'selected':''}>${e}</option>`).join('')}</select>`
+      :`<span style="font-size:11px;color:${assignColor}">${assignedTo||'—'}</span>`;
+    return`<tr class="pr" data-asid="${sid}" onclick="openAPIDetail('${sid}')" style="cursor:pointer;${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}${assignedTo===myName?';border-right:2px solid var(--pur)':''}">
       <td onclick="event.stopPropagation()"><input type="checkbox" data-asid="${sid}" ${apiChecked.has(sid)?'checked':''} onchange="this.checked?apiChecked.add(this.dataset.asid):apiChecked.delete(this.dataset.asid)"></td>
       <td style="color:var(--dim);font-size:10px;text-align:center">${(aPage-1)*aPER+idx+1}</td>
       <td class="code-cell">${s.tracking_code}</td>
+      <td onclick="event.stopPropagation()">${assignCell}</td>
       <td style="color:var(--white);font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${s.client_name||''}">${s.client_name||'—'}</td>
       <td style="font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis" title="${s.receiver_name||''}">${s.receiver_name||'—'}</td>
       <td style="font-family:var(--mono);font-size:11px">${ph?`<a href="tel:${s.customer_phone}" style="color:var(--blu)">${s.customer_phone}</a>`:'—'}</td>
@@ -4179,6 +4300,173 @@ function deleteUser(k){
 }
 
 // ═════════════════════════════════
+// ══════════════════════════════════════════
+// API SHIPMENTS ASSIGNMENT SYSTEM
+// ══════════════════════════════════════════
+function getAPIAssignments(){
+  try{return JSON.parse(localStorage.getItem('api_assignments')||'{}');}catch{return {};}
+}
+function saveAPIAssignments(obj){localStorage.setItem('api_assignments',JSON.stringify(obj));}
+
+function setAssignedTo(code,empName){
+  const a=getAPIAssignments();
+  if(empName)a[code]=empName;
+  else delete a[code];
+  saveAPIAssignments(a);
+  renderAPIShipments();
+  renderAssignStats();
+  if(empName)toast(`✅ الطرد ${code} → ${empName}`,'s');
+}
+
+function getActiveEmployees(){
+  return Object.values(USERS).filter(u=>u.status!=='inactive'&&u.role!=='manager').map(u=>u.name);
+}
+
+// ── AUTO ASSIGN ──
+function autoAssign(method){
+  const empChecks=document.querySelectorAll('#assign-emp-checks input:checked');
+  let emps=empChecks.length>0?[...empChecks].map(c=>c.value):getActiveEmployees();
+  if(!emps.length){emps=Object.values(USERS).map(u=>u.name);}
+  if(!emps.length){toast('لا يوجد موظفون للتوزيع','w');return;}
+
+  const a=getAPIAssignments();
+  const unassigned=apiShipments.filter(s=>!a[s.tracking_code]);
+
+  if(!unassigned.length){toast('كل الطرود مسندة مسبقاً','w');return;}
+
+  if(method==='equal'){
+    // Round-robin
+    unassigned.forEach((s,i)=>{a[s.tracking_code]=emps[i%emps.length];});
+  }
+  else if(method==='branch'){
+    // Group by branch then assign
+    const branchMap={};
+    apiShipments.forEach(s=>{
+      const br=s.current_branch||'أخرى';
+      if(!branchMap[br])branchMap[br]=[];
+      branchMap[br].push(s);
+    });
+    const branches=Object.keys(branchMap);
+    branches.forEach((br,bi)=>{
+      const emp=emps[bi%emps.length];
+      branchMap[br].forEach(s=>{if(!a[s.tracking_code])a[s.tracking_code]=emp;});
+    });
+  }
+  else if(method==='workload'){
+    // Assign to employee with least current assignments
+    const counts={};
+    emps.forEach(e=>{counts[e]=0;});
+    Object.values(a).forEach(e=>{if(counts[e]!==undefined)counts[e]++;});
+    unassigned.forEach(s=>{
+      const emp=emps.reduce((a,b)=>counts[a]<=counts[b]?a:b);
+      a[s.tracking_code]=emp;
+      counts[emp]++;
+    });
+  }
+
+  saveAPIAssignments(a);
+  renderAPIShipments();
+  renderAssignStats();
+  const total=Object.keys(a).length;
+  toast(`✅ تم توزيع ${unassigned.length} طرد على ${emps.length} موظفين`,'s');
+}
+
+// ── ASSIGN / UNASSIGN SELECTED ──
+function assignSelected(){
+  const emp=document.getElementById('manual-assign-emp')?.value;
+  if(!emp){toast('اختر موظفاً أولاً','w');return;}
+  const a=getAPIAssignments();
+  let count=0;
+  apiChecked.forEach(sid=>{
+    const s=apiShipments.find(x=>String(x.id)===sid);
+    if(s){a[s.tracking_code]=emp;count++;}
+  });
+  saveAPIAssignments(a);
+  renderAPIShipments();
+  renderAssignStats();
+  toast(`✅ تم تعيين ${count} طرد إلى ${emp}`,'s');
+}
+
+function unassignSelected(){
+  const a=getAPIAssignments();
+  let count=0;
+  apiChecked.forEach(sid=>{
+    const s=apiShipments.find(x=>String(x.id)===sid);
+    if(s&&a[s.tracking_code]){delete a[s.tracking_code];count++;}
+  });
+  saveAPIAssignments(a);
+  renderAPIShipments();
+  renderAssignStats();
+  toast(`تم إلغاء تعيين ${count} طرد`,'s');
+}
+
+function clearAllAssignments(){
+  if(!confirm('هل تريد مسح كل التوزيع؟'))return;
+  saveAPIAssignments({});
+  renderAPIShipments();
+  renderAssignStats();
+  toast('تم مسح جميع التعيينات','s');
+}
+
+// ── PANEL ──
+function openAssignPanel(){
+  document.getElementById('assign-panel').style.display='block';
+  renderAssignStats();
+  // Populate employee checkboxes
+  const emps=Object.values(USERS).filter(u=>u.status!=='inactive');
+  const checksEl=document.getElementById('assign-emp-checks');
+  if(checksEl)checksEl.innerHTML=emps.map(u=>`<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" value="${u.name}" checked style="accent-color:var(--pur)"> ${u.name}</label>`).join('');
+  // Populate manual assign dropdown
+  const manEl=document.getElementById('manual-assign-emp');
+  if(manEl)manEl.innerHTML='<option value="">اختر موظف...</option>'+emps.map(u=>`<option value="${u.name}">${u.name}</option>`).join('');
+}
+
+function closeAssignPanel(){document.getElementById('assign-panel').style.display='none';}
+
+function renderAssignStats(){
+  const a=getAPIAssignments();
+  const statsEl=document.getElementById('assign-stats');
+  if(!statsEl)return;
+  const empMap={};
+  Object.entries(USERS).forEach(([,u])=>{empMap[u.name]={name:u.name,total:0,crit:0,done:0};});
+  apiShipments.forEach(s=>{
+    const emp=a[s.tracking_code];
+    if(!emp)return;
+    if(!empMap[emp])empMap[emp]={name:emp,total:0,crit:0,done:0};
+    empMap[emp].total++;
+    if(cls(s.delay_days)==='critical')empMap[emp].crit++;
+    const cr=getCR(s.tracking_code);
+    if(cr.result==='solved'||cr.result==='contacted')empMap[emp].done++;
+  });
+  const unassigned=apiShipments.filter(s=>!a[s.tracking_code]).length;
+  const rows=Object.values(empMap).filter(e=>e.total>0).sort((a,b)=>b.total-a.total);
+  statsEl.innerHTML=`
+    <div style="background:var(--bg4);border-radius:var(--r2);padding:10px;text-align:center;border:1px solid var(--rim)">
+      <div style="font-size:18px;font-weight:900;color:var(--mute);font-family:var(--mono)">${unassigned}</div>
+      <div style="font-size:10px;color:var(--dim)">⚠️ غير مسندة</div>
+    </div>
+    ${rows.map(e=>{
+      const pct=e.total?Math.round(e.done/e.total*100):0;
+      return`<div style="background:var(--bg4);border-radius:var(--r2);padding:10px;border:1px solid var(--rim)">
+        <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:5px">${e.name}</div>
+        <div style="font-size:18px;font-weight:900;color:var(--pur);font-family:var(--mono)">${e.total}</div>
+        <div style="font-size:10px;color:var(--mute);margin-bottom:4px">${e.crit>0?`<span style="color:var(--red)">🔴 ${e.crit} حرج</span> · `:''} ${pct}% منجز</div>
+        <div style="background:var(--bg5);border-radius:99px;height:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--grn);border-radius:99px"></div></div>
+      </div>`;
+    }).join('')}`;
+}
+
+// Update staff tab to include API assignments
+const _origRenderStaff=renderStaff;
+function renderStaff(){
+  _origRenderStaff();
+  // Inject API assignment summary per employee in staff tab
+  const a=getAPIAssignments();
+  const staffApiEl=document.getElementById('staff-api-captains');
+  // Already handled in renderStaff, just re-render assign stats
+  renderAssignStats();
+}
+
 window.addEventListener('load',init);
 </script>
 </body>
