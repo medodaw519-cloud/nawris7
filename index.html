@@ -166,8 +166,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--white);min-height:
 
 /* ── KPI ── */
 .kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
-.kcard{background:var(--bg3);border:1px solid var(--rim);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;transition:transform .2s}
-.kcard:hover{transform:translateY(-2px)}
+.kcard{background:var(--bg3);border:1px solid var(--rim);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s,border-color .2s}
+.kcard:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.kcard[onclick]:hover{border-color:var(--pur);box-shadow:0 6px 20px rgba(155,109,255,.15)}
+.kcard[onclick]:active{transform:scale(.97)}
 .kcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0}
 .kcard.gold::before{background:var(--gold)}.kcard.red::before{background:var(--red)}
 .kcard.grn::before{background:var(--grn)}.kcard.blu::before{background:var(--blu)}
@@ -408,12 +410,12 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
       <div style="color:var(--red);font-size:20px">←</div>
     </div>
     <div class="kgrid">
-      <div class="kcard gold"><div class="klbl">إجمالي الطرود</div><div class="kval" id="k-total">0</div></div>
-      <div class="kcard red"><div class="klbl">حرج +15 يوم</div><div class="kval" id="k-crit">0</div></div>
-      <div class="kcard gold"><div class="klbl">تحذير 7-15 يوم</div><div class="kval" id="k-warn">0</div></div>
-      <div class="kcard grn"><div class="klbl">في الموعد</div><div class="kval" id="k-ok">0</div></div>
-      <div class="kcard blu"><div class="klbl">في الشركة</div><div class="kval" id="k-comp">0</div></div>
-      <div class="kcard orn"><div class="klbl">مرتجعة</div><div class="kval" id="k-ret">0</div></div>
+      <div class="kcard gold" style="cursor:pointer" onclick="goShipments('','')"><div class="klbl">إجمالي الطرود</div><div class="kval" id="k-total">0</div></div>
+      <div class="kcard red" style="cursor:pointer" onclick="goShipments('delay','critical')"><div class="klbl">حرج +15 يوم</div><div class="kval" id="k-crit">0</div></div>
+      <div class="kcard gold" style="cursor:pointer" onclick="goShipments('delay','warning')"><div class="klbl">تحذير 7-15 يوم</div><div class="kval" id="k-warn">0</div></div>
+      <div class="kcard grn" style="cursor:pointer" onclick="goShipments('delay','ok')"><div class="klbl">في الموعد</div><div class="kval" id="k-ok">0</div></div>
+      <div class="kcard blu" style="cursor:pointer" onclick="goShipments('status','in_company')"><div class="klbl">في الشركة</div><div class="kval" id="k-comp">0</div></div>
+      <div class="kcard orn" style="cursor:pointer" onclick="goShipments('status','returned')"><div class="klbl">مرتجعة</div><div class="kval" id="k-ret">0</div></div>
     </div>
 
     <!-- API Shipments Summary -->
@@ -423,11 +425,11 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
         <button class="btn btn-pur btn-sm" onclick="gTab('api-shipments')" style="font-size:11px">عرض الكل ←</button>
       </div>
       <div class="kgrid" style="margin-bottom:0" id="h-api-kpis">
-        <div style="background:var(--prd);border:1px solid var(--prb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--pur);font-family:var(--mono)" id="h-ak-total">0</div><div style="font-size:11px;color:var(--mute)">إجمالي طرود API</div></div>
-        <div style="background:var(--rd);border:1px solid var(--rb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--red);font-family:var(--mono)" id="h-ak-crit">0</div><div style="font-size:11px;color:var(--mute)">حرج +15 يوم</div></div>
-        <div style="background:var(--gd);border:1px solid var(--gb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--gold);font-family:var(--mono)" id="h-ak-warn">0</div><div style="font-size:11px;color:var(--mute)">تحذير 7-15 يوم</div></div>
-        <div style="background:var(--grd);border:1px solid var(--grb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--grn);font-family:var(--mono)" id="h-ak-driver">0</div><div style="font-size:11px;color:var(--mute)">مع المندوب</div></div>
-        <div style="background:var(--bld);border:1px solid var(--blb);border-radius:var(--r2);padding:12px;text-align:center"><div style="font-size:22px;font-weight:900;color:var(--blu);font-family:var(--mono)" id="h-ak-comp">0</div><div style="font-size:11px;color:var(--mute)">في الشركة</div></div>
+        <div style="background:var(--prd);border:1px solid var(--prb);border-radius:var(--r2);padding:12px;text-align:center;cursor:pointer" onclick="goAPIShipments('','')"><div style="font-size:22px;font-weight:900;color:var(--pur);font-family:var(--mono)" id="h-ak-total">0</div><div style="font-size:11px;color:var(--mute)">إجمالي طرود API</div></div>
+        <div style="background:var(--rd);border:1px solid var(--rb);border-radius:var(--r2);padding:12px;text-align:center;cursor:pointer" onclick="goAPIShipments('delay','critical')"><div style="font-size:22px;font-weight:900;color:var(--red);font-family:var(--mono)" id="h-ak-crit">0</div><div style="font-size:11px;color:var(--mute)">حرج +15 يوم</div></div>
+        <div style="background:var(--gd);border:1px solid var(--gb);border-radius:var(--r2);padding:12px;text-align:center;cursor:pointer" onclick="goAPIShipments('delay','warning')"><div style="font-size:22px;font-weight:900;color:var(--gold);font-family:var(--mono)" id="h-ak-warn">0</div><div style="font-size:11px;color:var(--mute)">تحذير 7-15 يوم</div></div>
+        <div style="background:var(--grd);border:1px solid var(--grb);border-radius:var(--r2);padding:12px;text-align:center;cursor:pointer" onclick="goAPIShipments('status','with_driver')"><div style="font-size:22px;font-weight:900;color:var(--grn);font-family:var(--mono)" id="h-ak-driver">0</div><div style="font-size:11px;color:var(--mute)">مع المندوب</div></div>
+        <div style="background:var(--bld);border:1px solid var(--blb);border-radius:var(--r2);padding:12px;text-align:center;cursor:pointer" onclick="goAPIShipments('status','in_company')"><div style="font-size:22px;font-weight:900;color:var(--blu);font-family:var(--mono)" id="h-ak-comp">0</div><div style="font-size:11px;color:var(--mute)">في الشركة</div></div>
       </div>
     </div>
 
@@ -2980,6 +2982,33 @@ document.getElementById('nav-tabs').addEventListener('click',e=>{
   const tab=e.target.closest('.sb-item');
   if(tab&&tab.dataset.tab)gTab(tab.dataset.tab);
 });
+
+// ── Navigate to shipments tab with filter ──
+function goShipments(filterType, filterVal){
+  gTab('shipments');
+  const delayEl=document.getElementById('s-fd');
+  const statusEl=document.getElementById('s-fst');
+  if(delayEl)delayEl.value='';
+  if(statusEl)statusEl.value='';
+  if(filterType==='delay'&&delayEl)delayEl.value=filterVal;
+  if(filterType==='status'&&statusEl)statusEl.value=filterVal;
+  setSeg('all');
+  renderShipments();
+}
+
+// ── Navigate to API shipments tab with filter ──
+function goAPIShipments(filterType, filterVal){
+  gTab('api-shipments');
+  const delayEl=document.getElementById('a-fd');
+  const statusEl=document.getElementById('a-fst');
+  if(delayEl)delayEl.value='';
+  if(statusEl)statusEl.value='';
+  if(filterType==='delay'&&delayEl)delayEl.value=filterVal;
+  if(filterType==='status'&&statusEl)statusEl.value=filterVal;
+  apiSeg='all';
+  document.querySelectorAll('.seg[data-aseg]').forEach(el=>el.classList.toggle('on',el.dataset.aseg==='all'));
+  renderAPIShipments();
+}
 
 // Seg click delegation for shipments
 document.querySelector('.segs')?.addEventListener('click',e=>{
