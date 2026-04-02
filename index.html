@@ -3156,6 +3156,18 @@ function openAPIDetail(sid){
   const ph=custPhone&&custPhone!=='—'&&custPhone!=='undefined';
   const stLabel=s.raw_status||s.status||'—';
 
+  // Match branch from branches db to get manager info
+  let branchManager='',branchManagerPhone='',branchName=s.current_branch||'';
+  if(branchName){
+    const brn=branches.find(b=>b.name&&(b.name===branchName||b.name.includes(branchName)||branchName.includes(b.name)));
+    if(brn){
+      branchManager=brn.manager_name||'';
+      branchManagerPhone=brn.manager_phone||'';
+      if(!branchName)branchName=brn.name;
+    }
+  }
+  const mgrPh=normPhone(branchManagerPhone);
+
   document.getElementById('sd-title').textContent=s.tracking_code;
   document.getElementById('sd-body').innerHTML=`
     <div class="g2" style="margin-bottom:14px">
@@ -3175,7 +3187,9 @@ function openAPIDetail(sid){
         ${rrow('هاتف المندوب',capPhone?`<a href="tel:${capPhone}" style="color:var(--blu);font-family:var(--mono)">${capPhone}</a>`:'—')}
         ${rrow('المنطقة',s.area||'—')}
         ${rrow('المحافظة',s.government||'—')}
-        ${rrow('الفرع',s.current_branch||'—')}
+        ${rrow('الفرع',branchName||'—')}
+        ${rrow('مدير الفرع',branchManager?`<strong>${branchManager}</strong>`:'—')}
+        ${rrow('هاتف المدير',mgrPh?`<a href="tel:${mgrPh}" style="color:var(--blu);font-family:var(--mono)">${mgrPh}</a>`:'—')}
       </div>
     </div>
     <div style="background:var(--bg4);border-radius:var(--r2);padding:14px;border-right:3px solid var(--grn);margin-bottom:14px">
@@ -3203,9 +3217,9 @@ function openAPIDetail(sid){
         <div style="background:var(--bg3);border-radius:var(--r2);padding:10px;text-align:center">
           <div style="font-size:18px;margin-bottom:4px">🏢</div>
           <div style="font-size:11px;font-weight:700;color:var(--white);margin-bottom:2px">مدير الفرع</div>
-          <div style="font-size:10px;color:var(--mute);margin-bottom:2px">${s.current_branch||'—'}</div>
-          <div style="font-size:10px;color:var(--mute);margin-bottom:8px">—</div>
-          <div style="font-size:10px;color:var(--mute)">—</div>
+          <div style="font-size:10px;color:var(--mute);margin-bottom:2px">${branchManager||'—'}</div>
+          <div style="font-size:10px;color:var(--blu);font-family:var(--mono);margin-bottom:8px">${mgrPh||'—'}</div>
+          ${mgrPh?`<button class="btn btn-red btn-sm" style="width:100%;justify-content:center;font-size:11px" onclick="apiWAManager('${sid}','${mgrPh.replace(/'/g,"\\'")}','${branchManager.replace(/'/g,"\\'")}');closeM('sd-modal')">🚨 تبليغ عن خطأ</button>`:`<div style="font-size:10px;color:var(--mute)">لا رقم</div>`}
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -3222,17 +3236,25 @@ function apiWA(sid,target){
   const stLabel=s.raw_status||s.status||'—';
 
   if(target==='captain'){
-    // Message to captain/driver
     const ph=normPhone(s.captain_phone||'');
     if(!ph){toast('لا يوجد رقم للمندوب — تحقق من بيانات المناديب','w');return;}
     const msg=`السلام عليكم ${s.captain||''} 👋\n🕊️ ${CFG.company}\n\nتذكير بطرد متأخر:\n📦 كود الطرد: ${s.tracking_code}\n👤 المتجر: ${s.client_name||'—'}\n📱 المستلم: ${s.receiver_name||'—'}\n📞 هاتف المستلم: ${s.customer_phone||'—'}\n📊 الحالة: ${stLabel}\n⏱️ التأخير: ${s.delay_days} يوم\n🏢 الفرع: ${s.current_branch||'—'}\n\n⚠️ يرجى اتخاذ إجراء فوري\n— إدارة ${CFG.company}`;
     openWAUrl(ph,msg);
   } else {
-    // Message to receiver/customer
     const ph=normPhone(s.customer_phone||'');
     const msg=`السلام عليكم ${s.receiver_name||s.client_name||''}\n🕊️ ${CFG.company}\n\nبخصوص طردكم رقم: ${s.tracking_code}\nالمتجر: ${s.client_name||'—'}\nالحالة: ${stLabel}\nالتأخير: ${s.delay_days} يوم\n${s.captain?'المندوب: '+s.captain+'\n':''}${s.current_branch?'الفرع: '+s.current_branch+'\n':''}\nللاستفسار تواصلوا معنا.\n— ${CFG.company}`;
     openWAUrl(ph,msg);
   }
+}
+
+function apiWAManager(sid,mgrPhone,mgrName){
+  const s=apiShipments.find(x=>x.id===sid);
+  if(!s){toast('لم يتم العثور على الطرد','e');return;}
+  const ph=normPhone(mgrPhone||'');
+  if(!ph){toast('لا يوجد رقم لمدير الفرع','w');return;}
+  const msg=`🚨 تنبيه — ${CFG.company}\n\nمدير فرع ${s.current_branch||'—'} / ${mgrName||'—'}\n\nيوجد مشكلة في تسليم الطرد التالي:\n📦 رقم الطرد: ${s.tracking_code}\n👤 المتجر: ${s.client_name||'—'}\n📱 المستلم: ${s.receiver_name||'—'}\n🚗 المندوب: ${s.captain||'—'}\n⏱️ التأخير: ${s.delay_days} يوم\n📊 الحالة: ${s.raw_status||s.status||'—'}\n\nيرجى التدخل الفوري وإيجاد حل.\n— منظومة ${CFG.company}`;
+  openWAUrl(ph,msg);
+  toast('🚨 تم تبليغ مدير الفرع','e');
 }
 function apiSave(sid,btn){
   const s=apiShipments.find(x=>x.id===sid);
