@@ -1246,7 +1246,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div style="font-size:18px;font-weight:800">👥 متابعة الموظفين</div>
       <div style="display:flex;gap:7px">
-        <button class="btn btn-ghost btn-sm" onclick="renderStaff()">↻ تحديث</button>
+        <button class="btn btn-ghost btn-sm" id="staff-refresh-btn" onclick="this.textContent='⏳ جارٍ...';this.disabled=true;renderStaff().finally(()=>{this.textContent='↻ تحديث';this.disabled=false;})">↻ تحديث</button>
         <button class="btn btn-red btn-sm" onclick="clearAllContactResults()">🗑️ حذف كل بيانات التتبع</button>
       </div>
     </div>
@@ -1258,6 +1258,11 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <div class="ctitle" style="margin-bottom:0">📋 جدول الطرود الكاملة</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="badge b-grn" id="sf-cnt">0 طرد</span>
+          <select class="fi" id="sf-fsrc" onchange="renderStaffShipments()" style="font-size:11px;min-width:110px">
+            <option value="">كل المصادر</option>
+            <option value="API">📡 طرود API</option>
+            <option value="DB">🗄️ طرود Supabase</option>
+          </select>
           <select class="fi" id="sf-femp" onchange="renderStaffShipments()" style="font-size:11px;min-width:130px"><option value="">كل الموظفين</option></select>
           <select class="fi" id="sf-fres" onchange="renderStaffShipments()" style="font-size:11px;min-width:130px">
             <option value="">كل النتائج</option>
@@ -1268,14 +1273,14 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
             <option value="pending">⏳ قيد المتابعة</option>
           </select>
           <input class="fi" id="sf-q" type="text" placeholder="🔍 بحث..." oninput="renderStaffShipments()" style="font-size:11px;min-width:160px">
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sf-q').value='';document.getElementById('sf-femp').selectedIndex=0;document.getElementById('sf-fres').selectedIndex=0;renderStaffShipments()">✕ مسح</button>
+          <button class="btn btn-ghost btn-sm" onclick="['sf-q'].forEach(id=>{let el=document.getElementById(id);if(el)el.value='';});['sf-femp','sf-fres','sf-fsrc'].forEach(id=>{let el=document.getElementById(id);if(el)el.selectedIndex=0;});renderStaffShipments()">✕ مسح</button>
         </div>
       </div>
       <div class="tw">
         <table>
           <thead><tr>
             <th>#</th>
-            <th>المتجر / العميل</th>
+            <th>المتجر / المصدر</th>
             <th>الكود</th>
             <th>المندوب</th>
             <th class="mob-hide">الفرع</th>
@@ -1283,7 +1288,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
             <th>التأخير</th>
             <th>نتيجة المتابعة</th>
             <th class="mob-hide">ملاحظة</th>
-            <th class="mob-hide">آخر متابعة (بواسطة)</th>
+            <th class="mob-hide">المتابِع (الموظف)</th>
           </tr></thead>
           <tbody id="sf-tbody"><tr><td colspan="10" style="text-align:center;padding:32px;color:var(--mute)">جارٍ التحميل...</td></tr></tbody>
         </table>
@@ -3720,7 +3725,13 @@ function sendToBranchManager(sid){
 // ══════════════════════════════════════════
 // STAFF TRACKER
 // ══════════════════════════════════════════
-function renderStaff(){
+async function renderStaff(){
+  // Always refresh contact results from Supabase so manager sees latest employee activity
+  try{
+    const fresh=await sb('contact_results','GET',null,'?select=*&order=shipment_id');
+    if(Array.isArray(fresh))contact_results_db=fresh;
+  }catch(e){console.warn('CR refresh failed:',e);}
+
   const users=Object.entries(USERS);
   const crLabels={solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
 
@@ -3903,26 +3914,30 @@ function renderStaffShipments(){
   const q=(document.getElementById('sf-q')?.value||'').trim().toLowerCase();
   const fRes=document.getElementById('sf-fres')?.value||'';
   const fEmp=document.getElementById('sf-femp')?.value||'';
+  const fSrc=document.getElementById('sf-fsrc')?.value||'';
   const perSel=parseInt(document.getElementById('sf-per')?.value||'50',10);
   const assignments=getAPIAssignments();
 
-  // Build employee dropdown once
+  // Rebuild employee dropdown (always, so new employees appear)
   const empSel=document.getElementById('sf-femp');
-  if(empSel&&empSel.options.length<=1){
+  if(empSel){
+    const prev=empSel.value;
+    while(empSel.options.length>1)empSel.remove(1);
     const names=new Set();
-    contact_results_db.forEach(r=>{if(r.updated_by)names.add(r.updated_by);});
+    contact_results_db.forEach(r=>{if(r.updated_by&&r.updated_by!=='—')names.add(r.updated_by);});
     Object.values(USERS).forEach(u=>names.add(u.name));
     apiShipments.forEach(s=>{const e=assignments[s.tracking_code];if(e)names.add(e);});
     names.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;empSel.appendChild(o);});
+    if(prev)empSel.value=prev;
   }
 
-  // Merge API + Supabase shipments into flat list
   const crLabels={solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
-  const statusLabels={with_driver:'مع المندوب',in_company:'في الشركة',delivered:'تم التسليم',returned:'مرتجع',partially_delivered:'تسليم جزئي'};
+  const statusLabels={with_driver:'مع المندوب',in_company:'في الشركة',delivered:'تم التسليم',returned:'مرتجع',partially_delivered:'تسليم جزئي',transferred:'محوّل',delayed:'متأخر'};
 
-  let list=apiShipments.map(s=>{
-    const cr=getCR(s.id);
-    const emp=assignments[s.tracking_code]||'—';
+  // ── Source 1: API shipments ──
+  const apiList=apiShipments.map(s=>{
+    const cr=getCR(s.id); // s.id = 'api_'+code
+    const emp=cr.by||(assignments[s.tracking_code]||'');
     return{
       code:s.tracking_code||'—',
       store:s.client_name||'—',
@@ -3932,12 +3947,33 @@ function renderStaffShipments(){
       delay:s.delay_days??0,
       crResult:cr.result||'',
       crNote:cr.note||'',
-      crBy:cr.by||emp,
-      _src:'api'
+      crBy:emp||'—',
+      src:'API'
     };
   });
 
+  // ── Source 2: Supabase shipments ──
+  const sbList=shipments.map(s=>{
+    const cr=getCR(s.id); // s.id = integer
+    return{
+      code:s.tracking_code||'—',
+      store:s.customer_name||s.client_name||'—',
+      captain:s.driver_name||'—',
+      branch:s.branch_name||'—',
+      status:s.status||'—',
+      delay:s.delay_days??0,
+      crResult:cr.result||'',
+      crNote:cr.note||'',
+      crBy:cr.by||'—',
+      src:'DB'
+    };
+  });
+
+  // Merge both sources — API first, then Supabase
+  let list=[...apiList,...sbList];
+
   // Filter
+  if(fSrc){list=list.filter(s=>s.src===fSrc);}
   if(q){list=list.filter(s=>s.code.toLowerCase().includes(q)||s.store.toLowerCase().includes(q)||s.captain.toLowerCase().includes(q)||s.branch.toLowerCase().includes(q));}
   if(fRes==='none'){list=list.filter(s=>!s.crResult);}
   else if(fRes){list=list.filter(s=>s.crResult===fRes);}
@@ -3980,17 +4016,21 @@ function renderStaffShipments(){
     const crColor=s.crResult==='solved'?'var(--grn)':s.crResult==='contacted'?'var(--blu)':s.crResult==='no_answer'?'var(--red)':s.crResult==='pending'?'var(--gold)':'var(--mute)';
     const statusLabel=statusLabels[s.status]||s.status;
     const stBadge=s.status==='with_driver'?'b-gold':s.status==='in_company'?'b-pur':s.status==='delivered'?'b-grn':s.status==='returned'?'b-red':'b-orn';
-    return`<tr>
+    const srcBadge=s.src==='API'
+      ?`<span style="font-size:9px;background:var(--prd);color:var(--pur);border:1px solid var(--prb);border-radius:4px;padding:1px 5px">API</span>`
+      :`<span style="font-size:9px;background:var(--bld);color:var(--blu);border:1px solid var(--blb);border-radius:4px;padding:1px 5px">DB</span>`;
+    const rowBg=s.crResult?'':`style="opacity:.85"`;
+    return`<tr ${rowBg}>
       <td style="color:var(--dim);font-size:11px">${start+i+1}</td>
-      <td style="max-width:160px"><div style="font-weight:700;font-size:13px;line-height:1.3">${s.store}</div></td>
+      <td style="max-width:170px"><div style="font-weight:700;font-size:12px;line-height:1.3">${s.store}</div><div style="margin-top:2px">${srcBadge}</div></td>
       <td><span class="code-cell" style="font-size:11px">${s.code}</span></td>
-      <td><div style="font-size:12px;font-weight:600">${s.captain}</div></td>
-      <td class="mob-hide" style="font-size:11px;color:var(--dim)">${s.branch}</td>
+      <td style="font-size:12px;font-weight:600">${s.captain}</td>
+      <td class="mob-hide" style="font-size:11px;color:var(--dim)">${s.branch||'—'}</td>
       <td><span class="badge ${stBadge}" style="font-size:10px">${statusLabel}</span></td>
       <td style="font-family:var(--mono);font-weight:800;color:${clsC}">${s.delay}يوم</td>
-      <td><span style="color:${crColor};font-weight:700;font-size:12px">${crLabels[s.crResult]||'—'}</span></td>
-      <td class="mob-hide" style="font-size:11px;color:var(--pale);max-width:140px">${s.crNote||'—'}</td>
-      <td class="mob-hide" style="font-size:11px;color:var(--dim)">${s.crBy&&s.crBy!=='—'?s.crBy:'—'}</td>
+      <td style="min-width:110px"><span style="color:${crColor};font-weight:700;font-size:12px">${crLabels[s.crResult]||'⬜ بدون متابعة'}</span></td>
+      <td class="mob-hide" style="font-size:11px;color:var(--pale);max-width:150px;word-break:break-word">${s.crNote||'—'}</td>
+      <td class="mob-hide"><span style="font-size:11px;font-weight:600;color:${s.crBy&&s.crBy!=='—'?'var(--grn)':'var(--dim)'}">${s.crBy&&s.crBy!=='—'?'👤 '+s.crBy:'—'}</span></td>
     </tr>`;
   }).join('');
 }
