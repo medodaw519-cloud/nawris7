@@ -308,6 +308,19 @@ tbody tr:nth-child(5){animation-delay:.1s}
   #assign-panel #assign-stats{grid-template-columns:1fr 1fr !important}
   #assign-panel [style*="flex-wrap:wrap"]{flex-wrap:wrap !important}
 
+  /* --- Hide non-essential table columns on mobile --- */
+  .mob-hide{display:none !important}
+  /* Make visible columns wider and readable */
+  #api-tw table{min-width:auto}
+  #api-tw .code-cell{font-size:12px;letter-spacing:0}
+  #api-tw tbody td{padding:11px 9px;font-size:12px}
+  #api-tw thead th{padding:10px 9px}
+  /* Tap-friendly row height */
+  #api-tw tbody tr{min-height:52px}
+  /* Hint that row is tappable */
+  #api-tw tbody tr.pr::after{content:'›';position:absolute;left:10px;color:var(--dim);font-size:18px}
+  #api-tw tbody tr.pr{position:relative}
+
   /* --- Page headers --- */
   .page-hdr{flex-direction:column;align-items:flex-start;gap:8px}
   .page-title{font-size:17px}
@@ -422,7 +435,7 @@ html.light .hero-greeting{background:linear-gradient(135deg,#1a1d2e 30%,var(--pu
 .lb-card{min-height:240px}
 
 /* ── TABLE ── */
-.tw{overflow-x:auto;border-radius:var(--r);overflow:hidden;border:1px solid var(--rim)}
+.tw{overflow-x:auto;overflow-y:hidden;border-radius:var(--r);border:1px solid var(--rim);-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:12px}
 thead th{background:rgba(18,20,48,.9);padding:11px 14px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--pale);border-bottom:1px solid var(--rim2);white-space:nowrap;font-family:var(--mono)}
 tbody td{padding:11px 14px;border-bottom:1px solid rgba(37,44,82,.7);color:var(--pale);white-space:nowrap;vertical-align:middle;transition:background .15s;font-family:var(--ar-font)}
@@ -1072,15 +1085,15 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <div style="flex:1"></div>
         <span style="font-size:10px;color:var(--mute)" id="api-last-fetch">آخر جلب: —</span>
       </div>
-      <div class="tw">
+      <div class="tw" id="api-tw">
         <table>
           <thead>
           <tr>
             <th><input type="checkbox" id="achk-all" onchange="toggleAllAPI(this)"></th>
-            <th>#</th><th>الكود</th><th>المسند إلى</th><th>المتجر / العميل</th><th>المستلم</th><th>هاتف المستلم</th>
-            <th>المندوب</th><th>الفرع</th><th>المحافظة</th><th>المنطقة</th>
-            <th>الحالة</th><th>أيام التأخير</th><th>نتيجة التواصل</th><th>ملاحظة</th>
-            <th>واتساب</th><th>حفظ</th><th>نقل للطرود</th>
+            <th class="mob-hide">#</th><th>الكود</th><th class="mob-hide">المسند إلى</th><th>المتجر / العميل</th><th class="mob-hide">المستلم</th><th class="mob-hide">هاتف المستلم</th>
+            <th class="mob-hide">المندوب</th><th class="mob-hide">الفرع</th><th class="mob-hide">المحافظة</th><th class="mob-hide">المنطقة</th>
+            <th>الحالة</th><th>التأخير</th><th class="mob-hide">نتيجة التواصل</th><th class="mob-hide">ملاحظة</th>
+            <th>واتساب</th><th class="mob-hide">حفظ</th><th class="mob-hide">نقل</th>
           </tr></thead>
           <tbody id="a-tbody"><tr><td colspan="18" style="text-align:center;padding:36px;color:var(--mute)">🔗 اضغط "جلب الآن" أو أعد إعدادات API من تبويب "رفع البيانات"</td></tr></tbody>
         </table>
@@ -4183,30 +4196,30 @@ function renderAPIShipments(){
       ?`<select onclick="event.stopPropagation()" onchange="setAssignedTo('${tc}',this.value)" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 5px;font-size:10px;color:${assignColor};font-family:var(--font);min-width:80px"><option value="">—</option>${empList.map(e=>`<option value="${e}" ${e===assignedTo?'selected':''}>${e}</option>`).join('')}</select>`
       :`<span style="font-size:11px;color:${assignColor}">${assignedTo||'—'}</span>`;
     return`<tr class="pr" data-asid="${sid}" onclick="openAPIDetail('${sid}')" style="cursor:pointer;${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}${assignedTo===myName?';border-right:2px solid var(--pur)':''}">
-      <td onclick="event.stopPropagation()"><input type="checkbox" data-asid="${sid}" ${apiChecked.has(sid)?'checked':''} onchange="this.checked?apiChecked.add(this.dataset.asid):apiChecked.delete(this.dataset.asid)"></td>
-      <td style="color:var(--dim);font-size:10px;text-align:center">${(aPage-1)*aPER+idx+1}</td>
+      <td onclick="event.stopPropagation()"><input type="checkbox" data-asid="${sid}" ${apiChecked.has(sid)?'checked':''} onchange="this.checked?apiChecked.add(this.dataset.asid):apiChecked.delete(this.dataset.asid)" style="width:16px;height:16px"></td>
+      <td class="mob-hide" style="color:var(--dim);font-size:10px;text-align:center">${(aPage-1)*aPER+idx+1}</td>
       <td class="code-cell">${s.tracking_code}</td>
-      <td onclick="event.stopPropagation()">${assignCell}</td>
-      <td style="color:var(--white);font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${s.client_name||''}">${s.client_name||'—'}</td>
-      <td style="font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis" title="${s.receiver_name||''}">${s.receiver_name||'—'}</td>
-      <td style="font-family:var(--mono);font-size:11px">${ph?`<a href="tel:${s.customer_phone}" style="color:var(--blu)">${s.customer_phone}</a>`:'—'}</td>
-      <td style="color:var(--white);font-size:11px">${s.captain||'—'}${s.captain_phone?`<div style="font-size:9px;color:var(--dim);font-family:var(--mono)">${s.captain_phone}</div>`:''}</td>
-      <td style="font-size:11px;color:var(--mute)">${s.current_branch||'—'}</td>
-      <td style="font-size:11px;color:var(--pale)">${s.government||'—'}</td>
-      <td style="font-size:11px;color:var(--mute)">${s.area||'—'}</td>
+      <td class="mob-hide" onclick="event.stopPropagation()">${assignCell}</td>
+      <td style="color:var(--white);font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.client_name||''}">${s.client_name||'—'}</td>
+      <td class="mob-hide" style="font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.receiver_name||''}">${s.receiver_name||'—'}</td>
+      <td class="mob-hide" style="font-family:var(--mono);font-size:11px">${ph?`<a href="tel:${s.customer_phone}" style="color:var(--blu)">${s.customer_phone}</a>`:'—'}</td>
+      <td class="mob-hide" style="color:var(--white);font-size:11px">${s.captain||'—'}${s.captain_phone?`<div style="font-size:9px;color:var(--dim);font-family:var(--mono)">${s.captain_phone}</div>`:''}</td>
+      <td class="mob-hide" style="font-size:11px;color:var(--mute)">${s.current_branch||'—'}</td>
+      <td class="mob-hide" style="font-size:11px;color:var(--pale)">${s.government||'—'}</td>
+      <td class="mob-hide" style="font-size:11px;color:var(--mute)">${s.area||'—'}</td>
       <td>${stBadge(s.status)}</td>
       <td>${dBadge(s.delay_days)}</td>
-      <td onclick="event.stopPropagation()"><select class="acr-sel" data-asid="${sid}" data-code="${tc}" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 4px;font-size:10px;color:var(--white);font-family:var(--font)">
+      <td class="mob-hide" onclick="event.stopPropagation()"><select class="acr-sel" data-asid="${sid}" data-code="${tc}" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 4px;font-size:10px;color:var(--white);font-family:var(--font)">
         <option value="" ${!cResult?'selected':''}>—</option>
         <option value="solved" ${cResult==='solved'?'selected':''}>✅ تم الحل</option>
         <option value="contacted" ${cResult==='contacted'?'selected':''}>📞 تم التواصل</option>
         <option value="no_answer" ${cResult==='no_answer'?'selected':''}>📵 لا يرد</option>
         <option value="pending" ${cResult==='pending'?'selected':''}>⏳ قيد المتابعة</option>
       </select></td>
-      <td onclick="event.stopPropagation()"><input type="text" value="${note}" placeholder="ملاحظة..." data-asid="${sid}" data-code="${tc}" class="anote-inp" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:3px 7px;font-size:11px;color:var(--white);font-family:var(--font);width:100px"></td>
-      <td onclick="event.stopPropagation()" style="white-space:nowrap"><div style="display:flex;gap:3px">${ph?`<button class="btn btn-wa btn-sm" onclick="apiWA('${sid}','receiver')" style="font-size:10px;padding:3px 6px" title="واتساب للمستلم">📱</button>`:''}${s.captain_phone?`<button class="btn btn-ghost btn-sm" onclick="apiWA('${sid}','captain')" style="font-size:10px;padding:3px 6px;border-color:var(--wa);color:var(--wa)" title="واتساب للمندوب ${s.captain}">🚗</button>`:''}</div></td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-ghost btn-sm" onclick="apiSave('${sid}',this)" style="font-size:11px;padding:4px 9px">💾</button></td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-pur btn-sm" onclick="apiMove('${sid}')" style="font-size:10px;padding:4px 8px" title="نقل للطرود الرئيسية">📦→</button></td>
+      <td class="mob-hide" onclick="event.stopPropagation()"><input type="text" value="${note}" placeholder="ملاحظة..." data-asid="${sid}" data-code="${tc}" class="anote-inp" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:3px 7px;font-size:11px;color:var(--white);font-family:var(--font);width:100px"></td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap"><div style="display:flex;gap:3px">${ph?`<button class="btn btn-wa btn-sm" onclick="apiWA('${sid}','receiver')" style="font-size:10px;padding:3px 6px" title="واتساب للمستلم">📱</button>`:''}${s.captain_phone?`<button class="btn btn-ghost btn-sm" onclick="apiWA('${sid}','captain')" style="font-size:10px;padding:3px 6px;border-color:var(--wa);color:var(--wa)" title="واتساب المندوب">🚗</button>`:''}</div></td>
+      <td class="mob-hide" onclick="event.stopPropagation()"><button class="btn btn-ghost btn-sm" onclick="apiSave('${sid}',this)" style="font-size:11px;padding:4px 9px">💾</button></td>
+      <td class="mob-hide" onclick="event.stopPropagation()"><button class="btn btn-pur btn-sm" onclick="apiMove('${sid}')" style="font-size:10px;padding:4px 8px" title="نقل للطرود الرئيسية">📦→</button></td>
     </tr>`;
   }).join('');
 
