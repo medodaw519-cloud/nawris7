@@ -3962,7 +3962,7 @@ async function renderStaff(){
       empStats[emp].total++;
       if(cls(s.delay_days)==='critical')empStats[emp].crit++;
       else if(cls(s.delay_days)==='warning')empStats[emp].warn++;
-      const cr=getCR(s.tracking_code);
+      const cr=getCR(s.id);
       if(cr.result==='solved'||cr.result==='contacted')empStats[emp].done++;
       else if(cr.result==='pending')empStats[emp].pending++;
       else if(cr.result==='no_answer')empStats[emp].noAnswer++;
@@ -4002,6 +4002,43 @@ async function renderStaff(){
 // ══════════════════════════════════════════
 // STAFF COMPLETE SHIPMENTS TABLE
 // ══════════════════════════════════════════
+function normEmpName(n){return String(n||'').replace(/\s+/g,' ').trim();}
+function crIdsEquivalent(a,b){
+  const x=String(a),y=String(b);
+  if(x===y)return true;
+  const cx=x.replace(/^api_/i,''),cy=y.replace(/^api_/i,'');
+  if(cx&&cx===cy)return true;
+  const ax=findApiShipmentForCrSid(x),ay=findApiShipmentForCrSid(y);
+  if(ax&&ay&&String(ax.id)===String(ay.id))return true;
+  if(ax&&(String(ax.id)===y||String(ax.tracking_code)===y||('api_'+String(ax.tracking_code))===y))return true;
+  if(ay&&(String(ay.id)===x||String(ay.tracking_code)===x||('api_'+String(ay.tracking_code))===x))return true;
+  return false;
+}
+function crUpdatedByMatches(rowSid,empName){
+  const w=normEmpName(empName);if(!w)return false;
+  return contact_results_db.some(r=>normEmpName(r.updated_by)===w&&crIdsEquivalent(rowSid,r.shipment_id));
+}
+/** Match API row to contact_results.shipment_id (يدعم api_كود أو الكود وحده) */
+function findApiShipmentForCrSid(sid){
+  const s=String(sid);
+  let x=apiShipments.find(a=>String(a.id)===s);
+  if(x)return x;
+  x=apiShipments.find(a=>String(a.tracking_code)===s);
+  if(x)return x;
+  if(s.startsWith('api_')){const code=s.slice(4);x=apiShipments.find(a=>String(a.tracking_code)===code);}
+  if(x)return x;
+  const withP='api_'+s.replace(/^api_/i,'');
+  return apiShipments.find(a=>String(a.id)===withP)||null;
+}
+/** مفتاح موحّد لتفادي تكرار الصف (كود فقط vs api_كود) */
+function canonicalStaffRowSid(shipmentId){
+  const apiS=findApiShipmentForCrSid(shipmentId);
+  if(apiS)return String(apiS.id);
+  const sbS=shipments.find(x=>String(x.id)===String(shipmentId));
+  if(sbS)return String(sbS.id);
+  return String(shipmentId);
+}
+
 function renderStaffShipments(){
   const tbody=document.getElementById('sf-tbody');
   if(!tbody)return;
@@ -4034,6 +4071,7 @@ function renderStaffShipments(){
     const cr=getCR(s.id); // s.id = 'api_'+code
     const emp=cr.by||(assignments[s.tracking_code]||'');
     return{
+      _sid:String(s.id),
       code:s.tracking_code||'—',
       store:s.client_name||'—',
       captain:s.captain||'—',
@@ -4051,6 +4089,7 @@ function renderStaffShipments(){
   const sbList=shipments.map(s=>{
     const cr=getCR(s.id); // s.id = integer
     return{
+      _sid:String(s.id),
       code:s.tracking_code||'—',
       store:s.customer_name||s.client_name||'—',
       captain:s.driver_name||'—',
@@ -4066,13 +4105,57 @@ function renderStaffShipments(){
 
   // Merge both sources — API first, then Supabase
   let list=[...apiList,...sbList];
+  const sidSeen=new Set(list.map(r=>canonicalStaffRowSid(r._sid)));
+
+  // ── Add contact_results rows for this employee not in current API/DB lists
+  // (طرود اختفت من جلب API لكن لها سجل متابعة — كانت تسبب فرق العدد 77 vs 154)
+  if(fEmp){
+    const want=normEmpName(fEmp);
+    contact_results_db.forEach(cr=>{
+      if(normEmpName(cr.updated_by)!==want)return;
+      const sid=String(cr.shipment_id);
+      const canon=canonicalStaffRowSid(sid);
+      if(sidSeen.has(canon))return;
+      sidSeen.add(canon);
+      const apiS=findApiShipmentForCrSid(sid);
+      if(apiS){
+        const cr2=getCR(sid)||getCR(apiS.id);
+        const emp=cr2.by||(assignments[apiS.tracking_code]||want);
+        list.push({
+          _sid:String(apiS.id),code:apiS.tracking_code||'—',store:apiS.client_name||'—',captain:apiS.captain||'—',
+          branch:apiS.current_branch||'—',status:apiS.status||'—',delay:apiS.delay_days??0,
+          crResult:cr2.result||'',crNote:cr2.note||'',crBy:emp||want,src:'API'
+        });
+      } else {
+        const sbS=shipments.find(x=>String(x.id)===sid||String(x.id)===canon);
+        if(sbS){
+          const cr2=getCR(sid)||getCR(sbS.id);
+          list.push({
+            _sid:String(sbS.id),code:sbS.tracking_code||'—',store:sbS.customer_name||sbS.client_name||'—',captain:sbS.driver_name||'—',
+            branch:sbS.branch_name||'—',status:sbS.status||'—',delay:sbS.delay_days??0,
+            crResult:cr2.result||'',crNote:cr2.note||'',crBy:cr2.by||want,src:'DB'
+          });
+        } else {
+          list.push({
+            _sid:canon,
+            code:(cr.tracking_code||'').trim()||sid.replace(/^api_/i,'')||'—',
+            store:'—',captain:'—',branch:'—',status:'—',delay:0,
+            crResult:cr.result||'',crNote:cr.note||'',crBy:cr.updated_by||want,src:'سجل'
+          });
+        }
+      }
+    });
+  }
 
   // Filter
   if(fSrc){list=list.filter(s=>s.src===fSrc);}
   if(q){list=list.filter(s=>s.code.toLowerCase().includes(q)||s.store.toLowerCase().includes(q)||s.captain.toLowerCase().includes(q)||s.branch.toLowerCase().includes(q));}
   if(fRes==='none'){list=list.filter(s=>!s.crResult);}
   else if(fRes){list=list.filter(s=>s.crResult===fRes);}
-  if(fEmp){list=list.filter(s=>s.crBy===fEmp);}
+  if(fEmp){
+    const w=normEmpName(fEmp);
+    list=list.filter(s=>normEmpName(s.crBy)===w||crUpdatedByMatches(s._sid,fEmp));
+  }
 
   const total=list.length;
   document.getElementById('sf-cnt').textContent=total+' طرد';
@@ -4113,6 +4196,8 @@ function renderStaffShipments(){
     const stBadge=s.status==='with_driver'?'b-gold':s.status==='in_company'?'b-pur':s.status==='delivered'?'b-grn':s.status==='returned'?'b-red':'b-orn';
     const srcBadge=s.src==='API'
       ?`<span style="font-size:9px;background:var(--prd);color:var(--pur);border:1px solid var(--prb);border-radius:4px;padding:1px 5px">API</span>`
+      :s.src==='سجل'
+      ?`<span style="font-size:9px;background:var(--gd);color:var(--gold);border:1px solid var(--gb);border-radius:4px;padding:1px 5px">سجل</span>`
       :`<span style="font-size:9px;background:var(--bld);color:var(--blu);border:1px solid var(--blb);border-radius:4px;padding:1px 5px">DB</span>`;
     const rowBg=s.crResult?'':`style="opacity:.85"`;
     return`<tr ${rowBg}>
