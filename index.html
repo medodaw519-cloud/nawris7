@@ -5264,7 +5264,23 @@ async function saveJanzourCR(sid,rowIdx){
     return;
   }
   if(btn){btn.textContent='⏳';btn.disabled=true;}
-  await saveCR(sid,result,note);
+  const ok=await saveCR(sid,result,note);
+  if(ok===true){
+    const s=apiShipments.find(x=>String(x.id)===String(sid)||String(x.tracking_code)===String(sid));
+    if(s){
+      const inferred=janzourOutcomeFromNote(note);
+      if(inferred==='delivered'){
+        s.status='delivered';
+        s.raw_status='تم التسليم';
+      }else if(inferred==='returned'){
+        s.status='returned';
+        s.raw_status='تم الإلغاء/المرتجع';
+      }
+      try{localStorage.setItem('api_shipments',JSON.stringify(apiShipments));}catch(e){}
+    }
+    refreshJanzourRatesPanels();
+    renderJanzour();
+  }
   if(btn){btn.textContent='✅';setTimeout(()=>{btn.textContent='💾 حفظ';btn.disabled=false;},1200);}
   if(sel){
     const c=result==='solved'?'var(--grn)':result==='contacted'?'var(--blu)':result==='no_answer'?'var(--red)':result==='pending'?'var(--gold)':'';
@@ -5741,9 +5757,30 @@ function deleteUser(k){
 // ══════════════════════════════════════════
 // COMMISSION ENGINE + KPI (منظومة index — بدون Laravel)
 // ══════════════════════════════════════════
-function commissionClassifyDR(status){
-  if(status==='delivered')return 'd';
-  if(status==='returned')return 'r';
+function janzourOutcomeFromNote(note){
+  const n=String(note||'').trim();
+  if(!n)return '';
+  if(n.includes('تم تسليم')||n==='تم التسليم') return 'delivered';
+  if(n.includes('إلغاء')||n.includes('الغاء')||n.includes('رفض العميل')||n.includes('تم الإرجاع')) return 'returned';
+  return '';
+}
+function resolveJanzourOutcome(sh){
+  if(!sh) return '';
+  const st=(typeof sh==='string')?sh:String(sh.status||'').trim();
+  if(st==='delivered'||st==='returned') return st;
+  // Fallback to follow-up note if API status wasn't updated yet.
+  if(typeof sh==='object'){
+    const sid=sh.id!=null?sh.id:sh.tracking_code;
+    const cr=getCR(sid);
+    const byNote=janzourOutcomeFromNote(cr?.note||'');
+    if(byNote) return byNote;
+  }
+  return st;
+}
+function commissionClassifyDR(shipmentOrStatus){
+  const st=resolveJanzourOutcome(shipmentOrStatus);
+  if(st==='delivered')return 'd';
+  if(st==='returned')return 'r';
   return 'o';
 }
 function commissionRound2(x){return Math.round(Number(x)*100)/100;}
@@ -5770,7 +5807,7 @@ function renderJanzourMetricsTable(){
   for(const s of janzourShipments){
     const key=(s.client_name||'—').trim()||'—';
     if(!buckets[key])buckets[key]={d:0,r:0};
-    const t=commissionClassifyDR(s.status);
+    const t=commissionClassifyDR(s);
     if(t==='d')buckets[key].d++;
     else if(t==='r')buckets[key].r++;
   }
@@ -5788,8 +5825,9 @@ function renderJanzourMetricsTable(){
 
 // ── لوحة أداء الفروع والمناديب (متاجر جنزور) ─────────────────
 function jperfClassifyShipment(s){
-  if(s.status==='delivered')return 'd';
-  if(s.status==='returned')return 'r';
+  const st=resolveJanzourOutcome(s);
+  if(st==='delivered')return 'd';
+  if(st==='returned')return 'r';
   return 'p';
 }
 function jperfAggregateByKey(list,keyFn){
@@ -5963,7 +6001,7 @@ function runJanzourCommissionSync(){
     let d=0,r=0;
     for(const x of list){
       if((a[x.tracking_code]||'').trim()!==emp)continue;
-      const t=commissionClassifyDR(x.status);
+      const t=commissionClassifyDR(x);
       if(t==='d')d++;else if(t==='r')r++;
     }
     const ratio=(d+r)>0?d/(d+r):1;
@@ -6000,7 +6038,7 @@ function computeServiceKpiForTarget(displayName){
   const list=janzourShipments.filter(s=>(a[s.tracking_code]||'').trim()===displayName);
   let d=0,r=0,o=0;
   for(const s of list){
-    const t=commissionClassifyDR(s.status);
+    const t=commissionClassifyDR(s);
     if(t==='d')d++;else if(t==='r')r++;else o++;
   }
   const term=d+r;
