@@ -1244,7 +1244,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <button class="btn btn-ghost btn-sm" onclick="gTab('api-shipments')">طرود API</button>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--mute);margin-bottom:14px">مؤشرات طرود <strong>متاجر جنزور</strong> فقط — تُحسب من حالات الطرود في بيانات API (تسليم / مرتجع / معلّق).</p>
+    <p style="font-size:12px;color:var(--mute);margin-bottom:14px">مؤشرات طرود <strong>متاجر جنزور</strong> — <strong>معدل النجاح</strong> = تسليم ÷ (تسليم + مرتجع). أعمدة «مع المندوب / في الشركة / متأخر / أخرى» تعكس <strong>حقل الحالة</strong> في بيانات API للطرود غير المُسدَّدة بتسليم أو مرتجع.</p>
 
     <div class="card" style="margin-bottom:14px;border-right:3px solid var(--pur)">
       <div class="ctitle" style="margin-bottom:8px">📊 معدلات نجاح التسليم — متاجر جنزور</div>
@@ -1262,21 +1262,21 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
     <div class="g2" style="margin-bottom:14px">
       <div class="card" style="border-right:3px solid var(--grn);padding:14px">
         <div class="ctitle" style="margin-bottom:6px">🏢 مصفوفة الفروع — تسليم متاجر جنزور</div>
-        <p style="font-size:10px;color:var(--mute);margin-bottom:8px">يُحدَّث عند تغيير حالة الطرد إلى «مُسلَّم» أو عبر زر «تم التسليم» في متابعة جنزور.</p>
+        <p style="font-size:10px;color:var(--mute);margin-bottom:8px">التسليم/المرتجع من الحالة أو ملاحظة المتابعة؛ أعمدة التشغيل من حقل الحالة في API للباقي.</p>
         <div class="tw" style="max-height:240px;overflow:auto">
           <table>
-            <thead><tr><th>الفرع</th><th>الطرود</th><th>تسليم</th><th>مرتجع</th><th>معلّق</th><th>النجاح %</th></tr></thead>
-            <tbody id="jperf-br-tbody"><tr><td colspan="6" style="text-align:center;padding:16px;color:var(--mute)">—</td></tr></tbody>
+            <thead><tr><th>الفرع</th><th>الطرود</th><th>تسليم</th><th>مرتجع</th><th>مع مندوب</th><th>في شركة</th><th>متأخر</th><th>أخرى</th><th>النجاح %</th></tr></thead>
+            <tbody id="jperf-br-tbody"><tr><td colspan="9" style="text-align:center;padding:16px;color:var(--mute)">—</td></tr></tbody>
           </table>
         </div>
       </div>
       <div class="card" style="border-right:3px solid var(--blu);padding:14px">
         <div class="ctitle" style="margin-bottom:6px">🚴 مصفوفة المناديب — طرود جنزور</div>
-        <p style="font-size:10px;color:var(--mute);margin-bottom:8px">حسب المندوب المعيّن على الطرد في بيانات API.</p>
+        <p style="font-size:10px;color:var(--mute);margin-bottom:8px">حسب المندوب في API؛ نفس تفصيل حالات التشغيل كمصفوفة الفروع.</p>
         <div class="tw" style="max-height:240px;overflow:auto">
           <table>
-            <thead><tr><th>المندوب</th><th>الطرود</th><th>تسليم</th><th>مرتجع</th><th>معلّق</th><th>النجاح %</th></tr></thead>
-            <tbody id="jperf-cap-tbody"><tr><td colspan="6" style="text-align:center;padding:16px;color:var(--mute)">—</td></tr></tbody>
+            <thead><tr><th>المندوب</th><th>الطرود</th><th>تسليم</th><th>مرتجع</th><th>مع مندوب</th><th>في شركة</th><th>متأخر</th><th>أخرى</th><th>النجاح %</th></tr></thead>
+            <tbody id="jperf-cap-tbody"><tr><td colspan="9" style="text-align:center;padding:16px;color:var(--mute)">—</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1290,7 +1290,10 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
           <div style="font-size:11px;color:var(--mute);line-height:1.75">
             <div><span style="color:#22c55e">●</span> تسليم: <strong id="jperf-br-d" style="color:var(--white)">0</strong></div>
             <div><span style="color:#ef4444">●</span> مرتجع: <strong id="jperf-br-r" style="color:var(--white)">0</strong></div>
-            <div><span style="color:#64748b">●</span> معلّق: <strong id="jperf-br-p" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#60a5fa">●</span> مع المندوب: <strong id="jperf-br-drv" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#fb923c">●</span> في الشركة: <strong id="jperf-br-cmp" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#fbbf24">●</span> متأخر: <strong id="jperf-br-dly" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#94a3b8">●</span> أخرى: <strong id="jperf-br-oth" style="color:var(--white)">0</strong></div>
             <div style="margin-top:6px;font-weight:800;color:var(--gold)" id="jperf-br-rate">—</div>
           </div>
         </div>
@@ -1303,7 +1306,10 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
           <div style="font-size:11px;color:var(--mute);line-height:1.75">
             <div><span style="color:#22c55e">●</span> تسليم: <strong id="jperf-cap-d" style="color:var(--white)">0</strong></div>
             <div><span style="color:#ef4444">●</span> مرتجع: <strong id="jperf-cap-r" style="color:var(--white)">0</strong></div>
-            <div><span style="color:#64748b">●</span> معلّق: <strong id="jperf-cap-p" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#60a5fa">●</span> مع المندوب: <strong id="jperf-cap-drv" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#fb923c">●</span> في الشركة: <strong id="jperf-cap-cmp" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#fbbf24">●</span> متأخر: <strong id="jperf-cap-dly" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#94a3b8">●</span> أخرى: <strong id="jperf-cap-oth" style="color:var(--white)">0</strong></div>
             <div style="margin-top:6px;font-weight:800;color:var(--gold)" id="jperf-cap-rate">—</div>
           </div>
         </div>
@@ -5880,20 +5886,35 @@ function renderJanzourMetricsTable(){
 }
 
 // ── لوحة أداء الفروع والمناديب (متاجر جنزور) ─────────────────
-function jperfClassifyShipment(s){
-  const st=resolveJanzourOutcome(s._metricStatus||s);
-  if(st==='delivered')return 'd';
-  if(st==='returned')return 'r';
-  return 'p';
+/** بعد حل تسليم/مرتجع: صنّف الباقي حسب status في API (مع مندوب / شركة / متأخر / أخرى) */
+function jperfOpsBucket(s){
+  const ms=String(s&&s._metricStatus||'').trim();
+  if(ms==='delivered')return 'd';
+  if(ms==='returned')return 'r';
+  const raw=String(s&&s.status||'').trim()||ms;
+  if(raw==='delivered')return 'd';
+  if(raw==='returned')return 'r';
+  if(raw==='with_driver')return 'drv';
+  if(raw==='in_company')return 'cmp';
+  if(raw==='delayed')return 'dly';
+  return 'oth';
+}
+function jperfRestSum(m){
+  return (m.drv||0)+(m.cmp||0)+(m.dly||0)+(m.oth||0);
 }
 function jperfAggregateByKey(list,keyFn){
   const map={};
   for(const s of list){
     const k=String(keyFn(s)||'').trim()||'—';
-    if(!map[k])map[k]={d:0,r:0,p:0,t:0};
+    if(!map[k])map[k]={d:0,r:0,drv:0,cmp:0,dly:0,oth:0,t:0};
     map[k].t++;
-    const u=jperfClassifyShipment(s);
-    if(u==='d')map[k].d++;else if(u==='r')map[k].r++;else map[k].p++;
+    const b=jperfOpsBucket(s);
+    if(b==='d')map[k].d++;
+    else if(b==='r')map[k].r++;
+    else if(b==='drv')map[k].drv++;
+    else if(b==='cmp')map[k].cmp++;
+    else if(b==='dly')map[k].dly++;
+    else map[k].oth++;
   }
   return map;
 }
@@ -5938,8 +5959,8 @@ function renderJanzourPerformanceOverview(){
   const tCap=document.getElementById('jperf-cap-tbody');
   if(!tBr||!tCap)return;
   if(!list.length){
-    tBr.innerHTML='<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--mute)">لا طرود جنزور</td></tr>';
-    tCap.innerHTML='<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--mute)">لا طرود جنزور</td></tr>';
+    tBr.innerHTML='<tr><td colspan="9" style="text-align:center;padding:16px;color:var(--mute)">لا طرود جنزور</td></tr>';
+    tCap.innerHTML='<tr><td colspan="9" style="text-align:center;padding:16px;color:var(--mute)">لا طرود جنزور</td></tr>';
     const sb=document.getElementById('jperf-br-sel');
     const sc=document.getElementById('jperf-cap-sel');
     if(sb)sb.innerHTML='';
@@ -5957,7 +5978,7 @@ function renderJanzourPerformanceOverview(){
     const pct=(m.d+m.r)>0?(100*rate).toFixed(2):'—';
     const cls=rate>=0.7?'b-grn':rate>=0.4?'b-gold':'b-red';
     const esc=String(name).replace(/</g,'&lt;');
-    return`<tr><td style="font-weight:700">${esc}</td><td>${m.t}</td><td style="color:var(--grn)">${m.d}</td><td style="color:var(--red)">${m.r}</td><td>${m.p}</td><td><span class="badge ${pct==='—'?'b-dim':cls}">${pct==='—'?pct:pct+'%'}</span></td></tr>`;
+    return`<tr><td style="font-weight:700">${esc}</td><td>${m.t}</td><td style="color:var(--grn)">${m.d}</td><td style="color:var(--red)">${m.r}</td><td style="color:var(--blu)">${m.drv}</td><td style="color:var(--orn)">${m.cmp}</td><td style="color:var(--gold)">${m.dly}</td><td style="color:var(--mute)">${m.oth}</td><td><span class="badge ${pct==='—'?'b-dim':cls}">${pct==='—'?pct:pct+'%'}</span></td></tr>`;
   }
   tBr.innerHTML=brRows.map(([k,v])=>rowHtml(k,v)).join('');
   tCap.innerHTML=capRows.map(([k,v])=>rowHtml(k,v)).join('');
@@ -5992,13 +6013,19 @@ function renderJanzourPerfProfiles(){
     const rate=jperfRate4(bm);
     if(el('jperf-br-d'))el('jperf-br-d').textContent=bm.d;
     if(el('jperf-br-r'))el('jperf-br-r').textContent=bm.r;
-    if(el('jperf-br-p'))el('jperf-br-p').textContent=bm.p;
+    if(el('jperf-br-drv'))el('jperf-br-drv').textContent=bm.drv;
+    if(el('jperf-br-cmp'))el('jperf-br-cmp').textContent=bm.cmp;
+    if(el('jperf-br-dly'))el('jperf-br-dly').textContent=bm.dly;
+    if(el('jperf-br-oth'))el('jperf-br-oth').textContent=bm.oth;
     if(el('jperf-br-rate'))el('jperf-br-rate').textContent=(bm.d+bm.r)>0?`معدل النجاح: ${(100*rate).toFixed(2)}%`:'لا توجد حالات مغلقة (تسليم/مرتجع)';
-    drawJperfDonut('jperf-donut-br',bm.d,bm.r,bm.p);
+    drawJperfDonut('jperf-donut-br',bm.d,bm.r,jperfRestSum(bm));
   }else{
     if(el('jperf-br-d'))el('jperf-br-d').textContent='0';
     if(el('jperf-br-r'))el('jperf-br-r').textContent='0';
-    if(el('jperf-br-p'))el('jperf-br-p').textContent='0';
+    if(el('jperf-br-drv'))el('jperf-br-drv').textContent='0';
+    if(el('jperf-br-cmp'))el('jperf-br-cmp').textContent='0';
+    if(el('jperf-br-dly'))el('jperf-br-dly').textContent='0';
+    if(el('jperf-br-oth'))el('jperf-br-oth').textContent='0';
     if(el('jperf-br-rate'))el('jperf-br-rate').textContent='—';
     drawJperfDonut('jperf-donut-br',0,0,0);
   }
@@ -6006,13 +6033,19 @@ function renderJanzourPerfProfiles(){
     const rate=jperfRate4(cm);
     if(el('jperf-cap-d'))el('jperf-cap-d').textContent=cm.d;
     if(el('jperf-cap-r'))el('jperf-cap-r').textContent=cm.r;
-    if(el('jperf-cap-p'))el('jperf-cap-p').textContent=cm.p;
+    if(el('jperf-cap-drv'))el('jperf-cap-drv').textContent=cm.drv;
+    if(el('jperf-cap-cmp'))el('jperf-cap-cmp').textContent=cm.cmp;
+    if(el('jperf-cap-dly'))el('jperf-cap-dly').textContent=cm.dly;
+    if(el('jperf-cap-oth'))el('jperf-cap-oth').textContent=cm.oth;
     if(el('jperf-cap-rate'))el('jperf-cap-rate').textContent=(cm.d+cm.r)>0?`معدل النجاح: ${(100*rate).toFixed(2)}%`:'لا توجد حالات مغلقة';
-    drawJperfDonut('jperf-donut-cap',cm.d,cm.r,cm.p);
+    drawJperfDonut('jperf-donut-cap',cm.d,cm.r,jperfRestSum(cm));
   }else{
     if(el('jperf-cap-d'))el('jperf-cap-d').textContent='0';
     if(el('jperf-cap-r'))el('jperf-cap-r').textContent='0';
-    if(el('jperf-cap-p'))el('jperf-cap-p').textContent='0';
+    if(el('jperf-cap-drv'))el('jperf-cap-drv').textContent='0';
+    if(el('jperf-cap-cmp'))el('jperf-cap-cmp').textContent='0';
+    if(el('jperf-cap-dly'))el('jperf-cap-dly').textContent='0';
+    if(el('jperf-cap-oth'))el('jperf-cap-oth').textContent='0';
     if(el('jperf-cap-rate'))el('jperf-cap-rate').textContent='—';
     drawJperfDonut('jperf-donut-cap',0,0,0);
   }
