@@ -566,9 +566,11 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
 </div>
 <script>
 (function(){
+  /* نطاقات تُعامل كإنتاج — لا شريط «بيئة تجريبية». أضف دومينك هنا عند النشر. */
+  var PRODUCTION_HOSTS=['nawriscontroltower.github.io','localhost','127.0.0.1','[::1]'];
   function nawrisIsStagingHost(){
     var h=(location.hostname||'').toLowerCase();
-    if(h==='localhost'||h==='127.0.0.1'||h==='[::1]')return true;
+    if(PRODUCTION_HOSTS.indexOf(h)!==-1)return false;
     if(h.indexOf('nawris7-dev')!==-1)return true;
     if(h.indexOf('staging')!==-1)return true;
     return false;
@@ -628,12 +630,14 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div class="sb-item" data-tab="transfers"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span> التحويلات</div>
       <div class="sb-item" data-tab="api-shipments"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span> طرود API <span class="tbadge" id="tb-api" style="background:var(--pur)">0</span></div>
       <div class="sb-item" data-tab="janzour"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> متابعة جنزور <span class="tbadge" id="tb-janzour" style="background:var(--grn)">0</span></div>
+      <div class="sb-item" data-tab="service-kpi"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></span> أداء الخدمة</div>
       <div class="sb-item" data-tab="whatsapp"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> واتساب</div>
       <div class="sb-divider"></div>
       <div class="sb-section manager-only">الإدارة</div>
       <div class="sb-item manager-only" data-tab="users"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> المستخدمون</div>
       <div class="sb-item manager-only" data-tab="reports"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> التقارير</div>
       <div class="sb-item manager-only" data-tab="staff"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> متابعة الموظفين</div>
+      <div class="sb-item manager-only" data-tab="commission-admin"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> عمولات جنزور</div>
       <div class="sb-item manager-only" data-tab="master"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> البيانات الثابتة</div>
       <div class="sb-item manager-only" data-tab="upload"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg></span> رفع البيانات</div>
     </nav>
@@ -1184,7 +1188,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div class="seg" data-jcrseg="solved">✅ تم الحل</div>
       <div class="seg" data-jcrseg="contacted">📞 تم التواصل</div>
       <div class="seg" data-jcrseg="no_answer">📵 لا يرد</div>
-      <div class="seg" data-jcrseg="pending">⏳ قيد المتابعة</div>
+      <div class="seg" data-jcrseg="pending">⏳ جاري المتابعة</div>
     </div>
 
     <!-- Filters — isolated from API tab -->
@@ -1206,6 +1210,71 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       المتاجر المرتبطة: <span id="j-store-count" style="color:var(--grn);font-weight:700">0</span> متجر من البيانات الثابتة
     </div>
 
+    <div class="card" style="margin-bottom:14px;border-right:3px solid var(--pur)">
+      <div class="ctitle" style="margin-bottom:8px">📊 معدلات نجاح التسليم — متاجر جنزور</div>
+      <p style="font-size:11px;color:var(--mute);margin-bottom:10px">نسبة التسليم من أصل (تسليم + مرتجع) حسب حالة كل طرد في نطاق جنزور.</p>
+      <div class="tw" style="max-height:280px;overflow:auto">
+        <table>
+          <thead><tr>
+            <th>المتجر</th><th>تسليمات</th><th>مرتجعات</th><th>المجموع</th><th>معدل النجاح %</th>
+          </tr></thead>
+          <tbody id="j-metrics-tbody"><tr><td colspan="5" style="text-align:center;padding:20px;color:var(--mute)">—</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- أداء الفروع والمناديب — مصفوفة + بطاقات (مثل لوحة التحكم) -->
+    <div class="g2" style="margin-bottom:14px">
+      <div class="card" style="border-right:3px solid var(--grn);padding:14px">
+        <div class="ctitle" style="margin-bottom:6px">🏢 مصفوفة الفروع — تسليم متاجر جنزور</div>
+        <p style="font-size:10px;color:var(--mute);margin-bottom:8px">يُحدَّث فور تغيير حالة الطرد إلى «مُسلَّم» أو عبر زر «تم التسليم».</p>
+        <div class="tw" style="max-height:240px;overflow:auto">
+          <table>
+            <thead><tr><th>الفرع</th><th>الطرود</th><th>تسليم</th><th>مرتجع</th><th>معلّق</th><th>النجاح %</th></tr></thead>
+            <tbody id="jperf-br-tbody"><tr><td colspan="6" style="text-align:center;padding:16px;color:var(--mute)">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" style="border-right:3px solid var(--blu);padding:14px">
+        <div class="ctitle" style="margin-bottom:6px">🚴 مصفوفة المناديب — طرود جنزور</div>
+        <p style="font-size:10px;color:var(--mute);margin-bottom:8px">حسب المندوب المعيّن على الطرد في بيانات API.</p>
+        <div class="tw" style="max-height:240px;overflow:auto">
+          <table>
+            <thead><tr><th>المندوب</th><th>الطرود</th><th>تسليم</th><th>مرتجع</th><th>معلّق</th><th>النجاح %</th></tr></thead>
+            <tbody id="jperf-cap-tbody"><tr><td colspan="6" style="text-align:center;padding:16px;color:var(--mute)">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="g2" style="margin-bottom:14px">
+      <div class="card" style="padding:14px;border-right:3px solid var(--pur)">
+        <div class="ctitle" style="margin-bottom:8px">ملف الفرع — نسبة التسليم والمرتجعات</div>
+        <select class="fi" id="jperf-br-sel" style="width:100%;margin-bottom:10px" onchange="renderJanzourPerfProfiles()"></select>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <canvas id="jperf-donut-br" width="168" height="168" style="max-width:168px"></canvas>
+          <div style="font-size:11px;color:var(--mute);line-height:1.75">
+            <div><span style="color:#22c55e">●</span> تسليم: <strong id="jperf-br-d" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#ef4444">●</span> مرتجع: <strong id="jperf-br-r" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#64748b">●</span> معلّق: <strong id="jperf-br-p" style="color:var(--white)">0</strong></div>
+            <div style="margin-top:6px;font-weight:800;color:var(--gold)" id="jperf-br-rate">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:14px;border-right:3px solid var(--cyan, #06b6d4)">
+        <div class="ctitle" style="margin-bottom:8px">الملف الشخصي — المندوب (جنزور)</div>
+        <select class="fi" id="jperf-cap-sel" style="width:100%;margin-bottom:10px" onchange="renderJanzourPerfProfiles()"></select>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <canvas id="jperf-donut-cap" width="168" height="168" style="max-width:168px"></canvas>
+          <div style="font-size:11px;color:var(--mute);line-height:1.75">
+            <div><span style="color:#22c55e">●</span> تسليم: <strong id="jperf-cap-d" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#ef4444">●</span> مرتجع: <strong id="jperf-cap-r" style="color:var(--white)">0</strong></div>
+            <div><span style="color:#64748b">●</span> معلّق: <strong id="jperf-cap-p" style="color:var(--white)">0</strong></div>
+            <div style="margin-top:6px;font-weight:800;color:var(--gold)" id="jperf-cap-rate">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Table -->
     <div class="tw">
       <table>
@@ -1213,7 +1282,8 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
           <th>#</th><th>المتجر / العميل</th><th>الكود</th>
           <th>المندوب</th><th class="mob-hide">الفرع</th>
           <th class="mob-hide">المحافظة</th><th>الحالة</th><th>التأخير</th>
-          <th>نتيجة المتابعة</th><th title="إلزامي قبل الحفظ">ماذا حدث في الطلب *</th><th>حفظ</th>
+          <th>نتيجة المتابعة</th><th title="إلزامي قبل الحفظ">ماذا حدث في الطلب *</th>
+          <th title="تسجيل تسليم + تم الحل + مزامنة المؤشرات">تم التسليم</th><th>حفظ</th>
           <th>واتساب</th>
         </tr></thead>
         <tbody id="j-tbody"><tr><td colspan="12" style="text-align:center;padding:32px;color:var(--mute)">اضغط "جلب الآن" في طرود API لتحميل البيانات</td></tr></tbody>
@@ -1223,6 +1293,58 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <span style="font-size:11px;color:var(--mute)" id="j-pginfo">—</span>
       <div style="flex:1"></div>
       <div class="pgn" id="j-pgn"></div>
+    </div>
+  </div>
+
+  <!-- ══ SERVICE PERFORMANCE (KPI) ══ -->
+  <div class="page" id="tab-service-kpi">
+    <div class="page-hdr">
+      <div class="page-title"><span class="page-title-accent"></span>أداء الخدمة</div>
+      <button class="btn btn-pur btn-sm" onclick="renderServiceKpiPage()">🔄 تحديث</button>
+    </div>
+    <p style="font-size:12px;color:var(--mute);margin-bottom:14px">مؤشرات طرود <strong>متابعة جنزور</strong> المسندة للموظف — عمولة المندوب المحفوظة على الطرد.</p>
+    <div id="skpi-manager-picker" class="manager-only card" style="padding:12px;margin-bottom:14px;display:none">
+      <label class="fl">عرض بيانات موظف</label>
+      <select class="fi" id="skpi-emp" style="max-width:320px" onchange="renderServiceKpiPage()"><option value="">— أنا —</option></select>
+    </div>
+    <div class="kgrid" style="margin-bottom:16px">
+      <div class="kcard blu"><div class="klbl">إجمالي الطرود المعالجة</div><div class="kval" id="skpi-total">0</div></div>
+      <div class="kcard grn"><div class="klbl">معدل نجاح التسليم %</div><div class="kval" id="skpi-rate">0</div></div>
+      <div class="kcard pur"><div class="klbl">إجمالي العمولات المحسوبة</div><div class="kval" id="skpi-earn">0</div></div>
+    </div>
+    <div class="card" style="padding:14px;margin-bottom:12px">
+      <div class="ctitle" style="margin-bottom:8px">تسليم / مرتجع / أخرى</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;font-size:13px">
+        <div><span style="color:var(--mute)">تسليمات</span> <strong id="skpi-d">0</strong></div>
+        <div><span style="color:var(--mute)">مرتجعات</span> <strong id="skpi-r">0</strong></div>
+        <div><span style="color:var(--mute)">حالات أخرى</span> <strong id="skpi-o">0</strong></div>
+      </div>
+    </div>
+    <div class="card" style="padding:12px">
+      <div class="ctitle" style="margin-bottom:6px;font-size:12px">📡 شكل موارد JSON (للمطورين)</div>
+      <pre id="skpi-json" dir="ltr" style="font-size:10px;overflow:auto;max-height:160px;background:var(--bg4);padding:10px;border-radius:var(--r2);margin:0;color:var(--pale)">{}</pre>
+    </div>
+  </div>
+
+  <div class="page manager-only" id="tab-commission-admin">
+    <div class="page-hdr">
+      <div class="page-title"><span class="page-title-accent"></span>عمولات جنزور — تحكم المدير</div>
+    </div>
+    <p style="font-size:12px;color:var(--mute);margin-bottom:14px">النسبة تُطبَّق على الوحدة الأساسية بعد ضربها في وزن يعتمد على نسبة تسليم/مرتجع لطرود جنزور المسندة لذلك الموظف.</p>
+    <div class="kgrid" style="margin-bottom:16px">
+      <div class="kcard gold"><div class="klbl">الوحدة الأساسية</div><input class="fi" id="ccfg-base" type="number" step="1" style="margin-top:6px;width:100%;font-weight:800"></div>
+      <div class="kcard orn"><div class="klbl">نسبة المندوب الافتراضية %</div><input class="fi" id="ccfg-rep" type="number" step="0.1" style="margin-top:6px;width:100%;font-weight:800"></div>
+      <div class="kcard blu"><div class="klbl">نسبة الفرع %</div><input class="fi" id="ccfg-br" type="number" step="0.1" style="margin-top:6px;width:100%;font-weight:800"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="btn btn-pur" onclick="saveCommissionAdminCfg()">💾 حفظ الإعدادات</button>
+      <button class="btn btn-grn" onclick="runJanzourCommissionSync()">⚡ إعادة حساب العمولات لطرود جنزور</button>
+    </div>
+    <div class="card" style="padding:14px">
+      <div class="ctitle" style="margin-bottom:10px">نسب عمولة يدوية لكل موظف (جنزور) %</div>
+      <p style="font-size:11px;color:var(--mute);margin-bottom:10px">اترك الحقل فارغاً للعودة للنسبة الافتراضية أعلاه.</p>
+      <div id="commission-emp-rows"></div>
+      <button class="btn btn-pur" style="margin-top:12px" onclick="saveCommissionOverridesFromAdmin()">💾 حفظ نسب الموظفين</button>
     </div>
   </div>
 
@@ -1628,6 +1750,10 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
           <option value="inactive">معطّل</option>
         </select>
       </div>
+      <div class="fg">
+        <label class="fl">نسبة عمولة جنزور (%) — اختياري</label>
+        <input type="number" class="fi" style="width:100%" id="um-janzour-pct" min="0" max="100" step="0.01" placeholder="الافتراضي من شاشة عمولات المدير">
+      </div>
       <div class="fg" id="um-perms-section">
         <label class="fl">الصلاحيات — الصفحات المسموحة</label>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;margin-top:6px" id="um-perms-grid">
@@ -1651,6 +1777,9 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
           </label>
           <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg4);border:1px solid var(--rim);border-radius:var(--r3);font-size:12px;cursor:pointer">
             <input type="checkbox" class="um-perm" value="janzour"> 🟢 متابعة جنزور
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg4);border:1px solid var(--rim);border-radius:var(--r3);font-size:12px;cursor:pointer">
+            <input type="checkbox" class="um-perm" value="service-kpi"> 📈 أداء الخدمة
           </label>
           <label style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bg4);border:1px solid var(--rim);border-radius:var(--r3);font-size:12px;cursor:pointer">
             <input type="checkbox" class="um-perm" value="whatsapp"> 💬 واتساب
@@ -1770,6 +1899,20 @@ const SB = 'https://kdlcoqcwqlxawejxfjss.supabase.co';
 const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkbGNvcWN3cWx4YXdlanhmanNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MzU0NzIsImV4cCI6MjA5MDIxMTQ3Mn0.rlxHDrJagHk8EiPsdVPy62bDicPXhwjZn0g6cdVQkv0';
 const H = {'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
 
+/** إعدادات عمولات جنزور (وحدة أساسية + نسب + وزن تسليم/مرتجع) — تُحفظ محلياً وتُزامن مع Supabase عند التعديل */
+let CommissionCfg = { unitBase: 100, repPercent: 5, branchPercent: 2, ratioMin: 0.25, ratioMax: 1 };
+function loadCommissionCfg(){
+  try{
+    const raw = localStorage.getItem('nawris_commission_cfg');
+    if(raw) Object.assign(CommissionCfg, JSON.parse(raw));
+  }catch(e){ console.warn('loadCommissionCfg', e); }
+}
+function persistCommissionCfg(){
+  localStorage.setItem('nawris_commission_cfg', JSON.stringify(CommissionCfg));
+  sbUp('settings', [{ key: 'nawris_commission_cfg', value: JSON.stringify(CommissionCfg) }]).catch(()=>{});
+}
+loadCommissionCfg();
+
 // All available tabs for permission system
 const ALL_TABS = [
   {id:'home',label:'🏠 الرئيسية',always:true},
@@ -1779,6 +1922,7 @@ const ALL_TABS = [
   {id:'transfers',label:'🔄 التحويلات'},
   {id:'api-shipments',label:'🔗 طرود API'},
   {id:'janzour',label:'🟢 متابعة جنزور'},
+  {id:'service-kpi',label:'📈 أداء الخدمة'},
   {id:'whatsapp',label:'💬 واتساب'},
   {id:'reports',label:'📊 التقارير'},
   {id:'staff',label:'👥 متابعة الموظفين'},
@@ -1792,8 +1936,8 @@ const MANAGER_TABS = ALL_TAB_IDS; // managers get all
 // Default users (seed)
 const DEFAULT_USERS = {
   'mohamed': {pass:'admin123',role:'manager',name:'محمد سعد',phone:'',email:'',status:'active',perms:ALL_TAB_IDS},
-  'ahmed':   {pass:'emp123',role:'employee',name:'أحمد علي',phone:'',email:'',status:'active',perms:['home','shipments','api-shipments']},
-  'fatima':  {pass:'emp123',role:'employee',name:'فاطمة محمد',phone:'',email:'',status:'active',perms:['home','shipments','api-shipments']},
+  'ahmed':   {pass:'emp123',role:'employee',name:'أحمد علي',phone:'',email:'',status:'active',perms:['home','shipments','api-shipments','janzour','service-kpi']},
+  'fatima':  {pass:'emp123',role:'employee',name:'فاطمة محمد',phone:'',email:'',status:'active',perms:['home','shipments','api-shipments','janzour','service-kpi']},
 };
 
 // Load users from localStorage, falling back to defaults
@@ -2109,6 +2253,9 @@ async function loadAll(){
       if(r.key==='mgrPhone')CFG.mgrPhone=r.value;
       if(r.key==='api_url'&&document.getElementById('api-url'))document.getElementById('api-url').value=r.value;
       if(r.key==='api_token'&&document.getElementById('api-token'))document.getElementById('api-token').value=r.value;
+      if(r.key==='nawris_commission_cfg'){
+        try{Object.assign(CommissionCfg,JSON.parse(r.value));localStorage.setItem('nawris_commission_cfg',r.value);}catch(e){}
+      }
       if(r.key==='nawris_users'){
         try{
           const fresh=JSON.parse(r.value);
@@ -2218,16 +2365,17 @@ async function saveCR(sid,result,note){
             body:JSON.stringify({result:result||'',note:note||'',updated_by:userName})
           });
         } else {
-          toast('خطأ في حفظ النتيجة: '+errTxt.substring(0,60),'e');return;
+          toast('خطأ في حفظ النتيجة: '+errTxt.substring(0,60),'e');return false;
         }
       }
     }
-    if(!r.ok){const e=await r.text();toast('خطأ في حفظ النتيجة: '+e.substring(0,60),'e');return;}
+    if(!r.ok){const e=await r.text();toast('خطأ في حفظ النتيجة: '+e.substring(0,60),'e');return false;}
     // Update local cache
     if(existing){existing.result=result;existing.note=note;existing.updated_by=userName;}
     else contact_results_db.push(payload);
     if(s)writeCrSnap(sid,s);
-  }catch(e){console.error('saveCR exception:',e);toast('خطأ في الحفظ','e');}
+    return true;
+  }catch(e){console.error('saveCR exception:',e);toast('خطأ في الحفظ','e');return false;}
 }
 /** Snapshot shipment labels to localStorage so staff rows still show names after the parcel drops off the API list */
 function writeCrSnap(sid,s){
@@ -2405,15 +2553,24 @@ function renderHome(){
 function renderLBCaptain(id,data){
   const map={};
   data.forEach(s=>{
-    const k=s.captain||'—';if(!k||k==='—')return;
+    const raw=String(s.captain||s.driver_name||'').trim();
+    const k=raw&&raw!=='—'?raw:'غير محدد';
     if(!map[k])map[k]={total:0,late:0};
     map[k].total++;
     if(cls(s.delay_days)!=='ok')map[k].late++;
   });
   const sorted=Object.entries(map).sort((a,b)=>b[1].late-a[1].late).slice(0,6);
-  const max=sorted[0]?.[1]?.late||1;
+  const max=Math.max(1,sorted[0]?.[1]?.late||0);
   const el=document.getElementById(id);
-  if(!sorted.length){el.innerHTML='<div style="text-align:center;padding:16px;color:var(--mute)">✅ لا تأخيرات</div>';return;}
+  if(!sorted.length||!data.length){
+    el.innerHTML='<div style="text-align:center;padding:16px;color:var(--mute)">✅ لا بيانات API</div>';
+    return;
+  }
+  const anyLate=sorted.some(([,c])=>c.late>0);
+  if(!anyLate){
+    el.innerHTML='<div style="text-align:center;padding:16px;color:var(--mute)">✅ لا تأخيرات مسجّلة للمناديب في جلب API الحالي</div>';
+    return;
+  }
   el.innerHTML=sorted.map(([n,c],i)=>{
     const pct=Math.round(c.late/max*100);
     return `<div class="lbi" style="animation:slideUp .3s ease ${i*.06}s both">
@@ -3709,6 +3866,7 @@ function setAlpha(l){
 }
 
 function gTab(id){
+  if(id==='commission-admin'&&(!CU||CU.role!=='manager')){toast('هذه الشاشة للمدير فقط','e');return;}
   document.querySelectorAll('#nav-tabs .sb-item').forEach(t=>t.classList.toggle('on',t.dataset.tab===id));
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('on');p.style.display='none';});
   const pg=document.getElementById('tab-'+id);
@@ -3723,6 +3881,8 @@ function gTab(id){
     transfers:renderTransfers,
     'api-shipments':()=>{loadCachedAPIShipments();updateAPIKPIs();renderAPIShipments();renderAPIFetchLog();},
     janzour:()=>{buildJanzourSet();renderJanzour();},
+    'service-kpi':()=>{renderServiceKpiPage();},
+    'commission-admin':()=>{if(!CU||CU.role!=='manager'){toast('هذه الشاشة للمدير فقط','e');return;}renderCommissionAdminPage();},
     whatsapp:renderWA,
     reports:genDaily,
     staff:()=>{sfPage=1;renderStaff();},
@@ -3736,7 +3896,10 @@ function gTab(id){
 // Tab click delegation (sidebar)
 document.getElementById('nav-tabs').addEventListener('click',e=>{
   const tab=e.target.closest('.sb-item');
-  if(tab&&tab.dataset.tab)gTab(tab.dataset.tab);
+  if(tab&&tab.dataset.tab){
+    if(tab.dataset.tab==='commission-admin'&&(!CU||CU.role!=='manager')){toast('غير مسموح','e');return;}
+    gTab(tab.dataset.tab);
+  }
 });
 
 // ── Navigate to shipments tab with filter ──
@@ -4378,6 +4541,7 @@ let JANZOUR_STORES_SEED=[
 let janzourStoreSet=new Set(); // lowercase+trimmed for fast O(1) lookup
 let janzourShipments=[];       // filtered subset — NEVER modified by API tab
 let janzourSeg='all', janzourCrSeg='all', jPage=1, jPER=25;
+let jperfLastBr='', jperfLastCap=''; // حفظ اختيار بطاقات أداء الفرع/المندوب
 let sfPage=1; // Staff shipments table page
 
 /** Janzour tab: mandatory dropdown — what happened with the order (saved to contact_results.note) */
@@ -4552,7 +4716,13 @@ async function fetchAPIShipments(){
       const clientName=String(r.client_name||r.customer_name||r.name||r['العميل']||r['المرسل']||'—').trim();
       const receiverName=String(r.receiver_name||r['اسم المستلم']||'').trim();
       const receiverPhone=String(r.receiver_phone||r.customer_phone||r.phone||r['رقم المستلم 1']||r['هاتف العميل']||'—').trim();
-      const captain=String(r.captain||r.driver_name||r['المندوب']||r['اسم المندوب']||'').trim();
+      let captain=String(
+        r.captain||r.driver_name||r.driver||r.courier||r.courier_name||r.delivery_man||r.assignee||r.agent_name
+        ||r['المندوب']||r['اسم المندوب']||r['مندوب التوصيل']||r['السائق']||r['اسم السائق']||r['مندوب']||''
+      ).trim();
+      try{
+        if(!captain&&r.driver&&typeof r.driver==='object')captain=String(r.driver.name||r.driver.full_name||'').trim();
+      }catch(e){}
       const currentBranch=String(r.current_branch||r.branch_name||r['الفرع الحالى']||r['الفرع']||'').trim();
       const government=String(r.government||r['المحافظة']||'').trim();
       const area=String(r.area||r.region_name||r['المنطقة']||'').trim();
@@ -4577,7 +4747,9 @@ async function fetchAPIShipments(){
         status:resolveStatus(rawStatus),
         delay_days:days,
         source:'api',
-        fetched_at:new Date().toISOString()
+        fetched_at:new Date().toISOString(),
+        rep_commission:null,
+        branch_commission:null
       });
     }
 
@@ -4907,23 +5079,35 @@ function renderJanzour(){
   // Rebuild filtered set in case stores were updated
   rebuildJanzourShipments();
   updateJanzourKPIs();
+  renderJanzourMetricsTable();
+  renderJanzourPerformanceOverview();
 
   const q=(document.getElementById('j-q')?.value||'').toLowerCase().trim();
-  const fcap=document.getElementById('j-fcap')?.value||'';
-  const fbranch=document.getElementById('j-fbranch')?.value||'';
-  const fgov=document.getElementById('j-fgov')?.value||'';
-  const fstatus=document.getElementById('j-fstatus')?.value||'';
 
-  // Populate filter dropdowns (rebuild each time so new data appears)
+  // Escape option value/label so names with ", <, & cannot break the DOM or leave a stale filter that zeroes the table
+  function jEscOpt(v){
+    return String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
   function rebuildSelect(elId,prefix,vals){
     const el=document.getElementById(elId);if(!el)return;
     const prev=el.value;
-    el.innerHTML=`<option value="">${prefix}</option>`+[...vals].sort().map(v=>`<option value="${v}">${v}</option>`).join('');
-    if(prev)el.value=prev;
+    const arr=[...new Set([...vals].map(v=>String(v).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+    el.innerHTML='<option value="">'+jEscOpt(prefix)+'</option>'+arr.map(v=>`<option value="${jEscOpt(v)}">${jEscOpt(v)}</option>`).join('');
+    if(prev&&arr.includes(prev))el.value=prev;
+    else el.selectedIndex=0;
   }
   rebuildSelect('j-fcap','👤 كل المناديب',new Set(janzourShipments.map(s=>s.captain).filter(Boolean)));
   rebuildSelect('j-fbranch','🏢 كل الفروع',new Set(janzourShipments.map(s=>s.current_branch).filter(Boolean)));
   rebuildSelect('j-fgov','🗺️ كل المحافظات',new Set(janzourShipments.map(s=>s.government).filter(Boolean)));
+
+  const fcap=(document.getElementById('j-fcap')?.value||'').trim();
+  const fbranch=(document.getElementById('j-fbranch')?.value||'').trim();
+  const fgov=(document.getElementById('j-fgov')?.value||'').trim();
+  const fstatus=(document.getElementById('j-fstatus')?.value||'').trim();
+
+  function jCrResult(sid){
+    try{return getCR(sid).result||'';}catch(e){return'';}
+  }
 
   // ── INDEPENDENT FILTER — does NOT affect apiShipments ──
   let list=[...janzourShipments];
@@ -4934,34 +5118,36 @@ function renderJanzour(){
   else if(janzourSeg==='driver')list=list.filter(s=>s.status==='with_driver');
   else if(janzourSeg==='company')list=list.filter(s=>s.status==='in_company');
 
-  if(fcap)list=list.filter(s=>s.captain===fcap);
-  if(fbranch)list=list.filter(s=>s.current_branch===fbranch);
-  if(fgov)list=list.filter(s=>s.government===fgov);
+  if(fcap)list=list.filter(s=>String(s.captain||'').trim()===fcap);
+  if(fbranch)list=list.filter(s=>String(s.current_branch||'').trim()===fbranch);
+  if(fgov)list=list.filter(s=>String(s.government||'').trim()===fgov);
   if(fstatus)list=list.filter(s=>s.status===fstatus);
   if(q)list=list.filter(s=>`${s.client_name} ${s.tracking_code} ${s.captain} ${s.current_branch} ${s.government}`.toLowerCase().includes(q));
 
   // ── CR filter ──
-  if(janzourCrSeg==='none')list=list.filter(s=>!getCR(s.id).result);
-  else if(janzourCrSeg==='solved')list=list.filter(s=>getCR(s.id).result==='solved');
-  else if(janzourCrSeg==='contacted')list=list.filter(s=>getCR(s.id).result==='contacted');
-  else if(janzourCrSeg==='no_answer')list=list.filter(s=>getCR(s.id).result==='no_answer');
-  else if(janzourCrSeg==='pending')list=list.filter(s=>getCR(s.id).result==='pending');
+  if(janzourCrSeg==='none')list=list.filter(s=>!jCrResult(s.id));
+  else if(janzourCrSeg==='solved')list=list.filter(s=>jCrResult(s.id)==='solved');
+  else if(janzourCrSeg==='contacted')list=list.filter(s=>jCrResult(s.id)==='contacted');
+  else if(janzourCrSeg==='no_answer')list=list.filter(s=>jCrResult(s.id)==='no_answer');
+  else if(janzourCrSeg==='pending')list=list.filter(s=>jCrResult(s.id)==='pending');
 
-  list.sort((a,b)=>b.delay_days-a.delay_days);
+  list.sort((a,b)=>(Number(b.delay_days)||0)-(Number(a.delay_days)||0));
 
+  const per=Math.max(1,jPER||25);
   const total=list.length;
-  const totalP=Math.max(1,Math.ceil(total/jPER));
+  const totalP=Math.max(1,Math.ceil(total/per));
+  if(!Number.isFinite(jPage)||jPage<1)jPage=1;
   if(jPage>totalP)jPage=1;
-  const page=list.slice((jPage-1)*jPER,jPage*jPER);
+  const page=list.slice((jPage-1)*per,jPage*per);
 
   const el=id=>document.getElementById(id);
   if(el('j-cnt'))el('j-cnt').textContent=total+' طرد';
 
-  const crOpts=`<option value="">— نتيجة —</option><option value="solved">✅ تم الحل</option><option value="contacted">📞 تم التواصل</option><option value="no_answer">📵 لا يرد</option><option value="pending">⏳ قيد المتابعة</option>`;
+  const crOpts=`<option value="">— نتيجة —</option><option value="solved">✅ تم الحل</option><option value="contacted">📞 تم التواصل</option><option value="no_answer">📵 لا يرد</option><option value="pending">⏳ جاري المتابعة</option>`;
 
   const tbody=el('j-tbody');
   if(!page.length){
-    tbody.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--mute)">${janzourShipments.length?'🔍 لا نتائج مطابقة':'🔌 اضغط "جلب الآن" في طرود API لتحميل البيانات'}</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="13" style="text-align:center;padding:32px;color:var(--mute)">${janzourShipments.length?'🔍 لا نتائج مطابقة':'🔌 اضغط "جلب الآن" في طرود API لتحميل البيانات'}</td></tr>`;
   } else {
     tbody.innerHTML=page.map((s,i)=>{
       const ph=s.customer_phone&&s.customer_phone!=='—'&&s.customer_phone!=='undefined';
@@ -4970,7 +5156,7 @@ function renderJanzour(){
       const crColor=crData.result==='solved'?'var(--grn)':crData.result==='contacted'?'var(--blu)':crData.result==='no_answer'?'var(--red)':crData.result==='pending'?'var(--gold)':'';
       const sid=s.id.replace(/'/g,"\\'");
       return`<tr class="pr" style="${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}">
-        <td style="color:var(--dim);font-size:10px" onclick="openAPIDetail('${sid}')">${(jPage-1)*jPER+i+1}</td>
+        <td style="color:var(--dim);font-size:10px" onclick="openAPIDetail('${sid}')">${(jPage-1)*per+i+1}</td>
         <td style="font-weight:700;color:var(--white);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="${s.client_name}" onclick="openAPIDetail('${sid}')">${s.client_name||'—'}</td>
         <td class="code-cell" style="cursor:pointer" onclick="openAPIDetail('${sid}')">${s.tracking_code}</td>
         <td style="font-size:11px;cursor:pointer" onclick="openAPIDetail('${sid}')">${s.captain||'—'}</td>
@@ -4987,6 +5173,9 @@ function renderJanzour(){
           <select class="fi jnote-sel" id="jnote-${i}" style="font-size:11px;padding:3px 6px;min-width:140px;width:100%;max-width:280px">
             ${janzourNoteSelectHtml(crData.note||'')}
           </select>
+        </td>
+        <td onclick="event.stopPropagation()">
+          <button type="button" class="btn btn-grn btn-sm" title="تم التسليم — تحديث الحالة ومؤشرات الفرع والمندوب" onclick="janzourQuickDelivered('${sid}')" style="font-size:10px;padding:4px 8px;white-space:nowrap">✓ تسليم</button>
         </td>
         <td onclick="event.stopPropagation()">
           <button type="button" class="btn btn-pur btn-sm" id="jsave-${i}" onclick="saveJanzourCR('${sid}',${i})" style="font-size:10px;padding:4px 8px;white-space:nowrap">💾 حفظ</button>
@@ -5009,7 +5198,7 @@ function renderJanzour(){
 
   // Build pagination
   const info=el('j-pginfo'),pgn=el('j-pgn');
-  if(total>0&&info){const s=(jPage-1)*jPER+1,e=Math.min(jPage*jPER,total);info.textContent=`${s}–${e} من ${total} طرد`;}
+  if(total>0&&info){const s=(jPage-1)*per+1,e=Math.min(jPage*per,total);info.textContent=`${s}–${e} من ${total} طرد`;}
   else if(info)info.textContent='لا نتائج';
   if(pgn){
     pgn.innerHTML='';
@@ -5316,10 +5505,17 @@ function loadCachedAPIShipments(){
     const cached=localStorage.getItem('api_shipments');
     if(cached){
       apiShipments=JSON.parse(cached);
+      apiShipments.forEach(s=>{
+        if(s.rep_commission===undefined)s.rep_commission=null;
+        if(s.branch_commission===undefined)s.branch_commission=null;
+      });
       enrichAPICaptainPhones();
       document.getElementById('tb-api').textContent=apiShipments.length;
       updateKPIs();
     }
+    // loadAll() runs buildJanzourSet() before apiShipments is filled from cache — refresh subset now
+    buildJanzourSet();
+    if(document.getElementById('tab-janzour')?.classList.contains('on'))renderJanzour();
     const logCached=localStorage.getItem('api_fetch_log');
     if(logCached)apiFetchLog=JSON.parse(logCached);
   }catch(e){}
@@ -5380,6 +5576,8 @@ function openUserModal(editKey){
     document.getElementById('um-phone').value=u.phone||'';
     document.getElementById('um-email').value=u.email||'';
     document.getElementById('um-status').value=u.status||'active';
+    const jz=document.getElementById('um-janzour-pct');
+    if(jz)jz.value=u.janzour_commission_pct!=null&&u.janzour_commission_pct!==''?u.janzour_commission_pct:'';
     // Set permission checkboxes
     const perms=u.perms||[];
     document.querySelectorAll('.um-perm').forEach(cb=>{
@@ -5396,9 +5594,10 @@ function openUserModal(editKey){
     document.getElementById('um-phone').value='';
     document.getElementById('um-email').value='';
     document.getElementById('um-status').value='active';
+    const jz2=document.getElementById('um-janzour-pct');if(jz2)jz2.value='';
     // Default perms for employee
     document.querySelectorAll('.um-perm').forEach(cb=>{
-      cb.checked=(cb.value==='home'||cb.value==='shipments'||cb.value==='api-shipments');
+      cb.checked=(cb.value==='home'||cb.value==='shipments'||cb.value==='api-shipments'||cb.value==='service-kpi');
     });
   }
   onRoleChange();
@@ -5469,7 +5668,9 @@ function saveUser(){
     }
   }
 
-  USERS[username]={pass,role,name,phone,email,status,perms};
+  const jzRaw=document.getElementById('um-janzour-pct')?.value?.trim();
+  const janzour_commission_pct=jzRaw===''||jzRaw===undefined?null:parseFloat(jzRaw);
+  USERS[username]={pass,role,name,phone,email,status,perms,janzour_commission_pct:isNaN(janzour_commission_pct)?null:janzour_commission_pct};
   saveUsers(USERS);
 
   // If editing self, update session
@@ -5491,6 +5692,343 @@ function deleteUser(k){
   saveUsers(USERS);
   renderUsersPage();
   toast('🗑️ تم حذف المستخدم','s');
+}
+
+// ══════════════════════════════════════════
+// COMMISSION ENGINE + KPI (منظومة index — بدون Laravel)
+// ══════════════════════════════════════════
+function commissionClassifyDR(status){
+  if(status==='delivered')return 'd';
+  if(status==='returned')return 'r';
+  return 'o';
+}
+function commissionRound2(x){return Math.round(Number(x)*100)/100;}
+function renderJanzourMetricsTable(){
+  const tb=document.getElementById('j-metrics-tbody');
+  if(!tb)return;
+  rebuildJanzourShipments();
+  if(!janzourShipments.length){
+    tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--mute)">لا طرود في نطاق جنزور — جرّب الجلب أو تعريف المتاجر</td></tr>';
+    return;
+  }
+  const buckets={};
+  for(const s of janzourShipments){
+    const key=(s.client_name||'—').trim()||'—';
+    if(!buckets[key])buckets[key]={d:0,r:0};
+    const t=commissionClassifyDR(s.status);
+    if(t==='d')buckets[key].d++;
+    else if(t==='r')buckets[key].r++;
+  }
+  const rows=Object.entries(buckets).map(([name,v])=>{
+    const t=v.d+v.r;
+    const rate=t>0?Math.round(1000*v.d/t)/10:0;
+    return {name,d:v.d,r:v.r,t,rate};
+  }).sort((a,b)=>b.t-a.t);
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td style="font-weight:700">${String(r.name).replace(/</g,'&lt;')}</td>
+    <td>${r.d}</td><td>${r.r}</td><td>${r.t}</td>
+    <td><span class="badge ${r.rate>=70?'b-grn':r.rate>=40?'b-gold':'b-red'}">${r.rate}%</span></td>
+  </tr>`).join('');
+}
+
+// ── لوحة أداء الفروع والمناديب (متاجر جنزور) ─────────────────
+function jperfClassifyShipment(s){
+  if(s.status==='delivered')return 'd';
+  if(s.status==='returned')return 'r';
+  return 'p';
+}
+function jperfAggregateByKey(list,keyFn){
+  const map={};
+  for(const s of list){
+    const k=String(keyFn(s)||'').trim()||'—';
+    if(!map[k])map[k]={d:0,r:0,p:0,t:0};
+    map[k].t++;
+    const u=jperfClassifyShipment(s);
+    if(u==='d')map[k].d++;else if(u==='r')map[k].r++;else map[k].p++;
+  }
+  return map;
+}
+function jperfRate4(m){
+  const c=m.d+m.r;
+  if(c<=0)return 0;
+  return Math.round(10000*m.d/c)/10000;
+}
+function drawJperfDonut(canvasId,d,r,p){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,rad=Math.min(W,H)/2-10;
+  ctx.clearRect(0,0,W,H);
+  const sum=d+r+p;
+  if(sum<=0){
+    ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);
+    ctx.fillStyle='#1a2235';ctx.fill();
+    ctx.fillStyle='#64748b';ctx.font='11px Tahoma,Arial';ctx.textAlign='center';
+    ctx.fillText('لا بيانات',cx,cy);
+    return;
+  }
+  let a=-Math.PI/2;
+  [[d,'#22c55e'],[r,'#ef4444'],[p,'#475569']].forEach(([v,c])=>{
+    if(!v)return;
+    const sl=(v/sum)*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,rad,a,a+sl);ctx.closePath();
+    ctx.fillStyle=c;ctx.fill();
+    a+=sl;
+  });
+  ctx.beginPath();ctx.arc(cx,cy,rad*0.58,0,Math.PI*2);
+  ctx.fillStyle='#0f1419';ctx.fill();
+  ctx.fillStyle='#e2e8f0';ctx.font='bold 12px Tahoma,Arial';ctx.textAlign='center';
+  const inner=d+r>0?((100*d)/(d+r)).toFixed(2)+'%':'—';
+  ctx.fillText('نسبة العمليات',cx,cy-6);
+  ctx.font='10px Tahoma,Arial';ctx.fillStyle='#94a3b8';
+  ctx.fillText(inner,cx,cy+8);
+}
+function renderJanzourPerformanceOverview(){
+  rebuildJanzourShipments();
+  const list=janzourShipments;
+  const tBr=document.getElementById('jperf-br-tbody');
+  const tCap=document.getElementById('jperf-cap-tbody');
+  if(!tBr||!tCap)return;
+  if(!list.length){
+    tBr.innerHTML='<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--mute)">لا طرود جنزور</td></tr>';
+    tCap.innerHTML='<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--mute)">لا طرود جنزور</td></tr>';
+    const sb=document.getElementById('jperf-br-sel');
+    const sc=document.getElementById('jperf-cap-sel');
+    if(sb)sb.innerHTML='';
+    if(sc)sc.innerHTML='';
+    drawJperfDonut('jperf-donut-br',0,0,0);
+    drawJperfDonut('jperf-donut-cap',0,0,0);
+    return;
+  }
+  const brMap=jperfAggregateByKey(list,s=>s.current_branch||'');
+  const capMap=jperfAggregateByKey(list,s=>s.captain||'');
+  const brRows=Object.entries(brMap).sort((a,b)=>b[1].t-a[1].t);
+  const capRows=Object.entries(capMap).sort((a,b)=>b[1].t-a[1].t);
+  function rowHtml(name,m){
+    const rate=jperfRate4(m);
+    const pct=(m.d+m.r)>0?(100*rate).toFixed(2):'—';
+    const cls=rate>=0.7?'b-grn':rate>=0.4?'b-gold':'b-red';
+    const esc=String(name).replace(/</g,'&lt;');
+    return`<tr><td style="font-weight:700">${esc}</td><td>${m.t}</td><td style="color:var(--grn)">${m.d}</td><td style="color:var(--red)">${m.r}</td><td>${m.p}</td><td><span class="badge ${pct==='—'?'b-dim':cls}">${pct==='—'?pct:pct+'%'}</span></td></tr>`;
+  }
+  tBr.innerHTML=brRows.map(([k,v])=>rowHtml(k,v)).join('');
+  tCap.innerHTML=capRows.map(([k,v])=>rowHtml(k,v)).join('');
+  const sb=document.getElementById('jperf-br-sel');
+  const sc=document.getElementById('jperf-cap-sel');
+  function fillSel(el,rows,last){
+    if(!el)return;
+    const keys=rows.map(([k])=>k);
+    const jEsc=v=>String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    el.innerHTML=keys.map(k=>`<option value="${jEsc(k)}">${jEsc(k)}</option>`).join('');
+    const pick=last&&keys.includes(last)?last:keys[0];
+    if(pick)el.value=pick;
+  }
+  fillSel(sb,brRows,jperfLastBr);
+  fillSel(sc,capRows,jperfLastCap);
+  if(sb&&sb.value)jperfLastBr=sb.value;
+  if(sc&&sc.value)jperfLastCap=sc.value;
+  renderJanzourPerfProfiles();
+}
+function renderJanzourPerfProfiles(){
+  rebuildJanzourShipments();
+  const list=janzourShipments;
+  const brMap=jperfAggregateByKey(list,s=>s.current_branch||'');
+  const capMap=jperfAggregateByKey(list,s=>s.captain||'');
+  const sb=document.getElementById('jperf-br-sel');
+  const sc=document.getElementById('jperf-cap-sel');
+  if(sb&&sb.value)jperfLastBr=sb.value;
+  if(sc&&sc.value)jperfLastCap=sc.value;
+  const bm=sb&&sb.value?brMap[sb.value]:null;
+  const cm=sc&&sc.value?capMap[sc.value]:null;
+  const el=id=>document.getElementById(id);
+  if(bm){
+    const rate=jperfRate4(bm);
+    if(el('jperf-br-d'))el('jperf-br-d').textContent=bm.d;
+    if(el('jperf-br-r'))el('jperf-br-r').textContent=bm.r;
+    if(el('jperf-br-p'))el('jperf-br-p').textContent=bm.p;
+    if(el('jperf-br-rate'))el('jperf-br-rate').textContent=(bm.d+bm.r)>0?`معدل النجاح: ${(100*rate).toFixed(2)}%`:'لا توجد حالات مغلقة (تسليم/مرتجع)';
+    drawJperfDonut('jperf-donut-br',bm.d,bm.r,bm.p);
+  }else{
+    if(el('jperf-br-d'))el('jperf-br-d').textContent='0';
+    if(el('jperf-br-r'))el('jperf-br-r').textContent='0';
+    if(el('jperf-br-p'))el('jperf-br-p').textContent='0';
+    if(el('jperf-br-rate'))el('jperf-br-rate').textContent='—';
+    drawJperfDonut('jperf-donut-br',0,0,0);
+  }
+  if(cm){
+    const rate=jperfRate4(cm);
+    if(el('jperf-cap-d'))el('jperf-cap-d').textContent=cm.d;
+    if(el('jperf-cap-r'))el('jperf-cap-r').textContent=cm.r;
+    if(el('jperf-cap-p'))el('jperf-cap-p').textContent=cm.p;
+    if(el('jperf-cap-rate'))el('jperf-cap-rate').textContent=(cm.d+cm.r)>0?`معدل النجاح: ${(100*rate).toFixed(2)}%`:'لا توجد حالات مغلقة';
+    drawJperfDonut('jperf-donut-cap',cm.d,cm.r,cm.p);
+  }else{
+    if(el('jperf-cap-d'))el('jperf-cap-d').textContent='0';
+    if(el('jperf-cap-r'))el('jperf-cap-r').textContent='0';
+    if(el('jperf-cap-p'))el('jperf-cap-p').textContent='0';
+    if(el('jperf-cap-rate'))el('jperf-cap-rate').textContent='—';
+    drawJperfDonut('jperf-donut-cap',0,0,0);
+  }
+}
+async function janzourQuickDelivered(sid){
+  const NOTE='تم تسليم الطرد للعميل';
+  const s=apiShipments.find(x=>String(x.id)===String(sid));
+  if(!s){toast('الطرد غير موجود في بيانات API','e');return;}
+  const prev={status:s.status,raw:s.raw_status};
+  s.status='delivered';
+  s.raw_status='تم التسليم';
+  try{localStorage.setItem('api_shipments',JSON.stringify(apiShipments));}catch(e){}
+  const ok=await saveCR(sid,'solved',NOTE);
+  if(ok!==true){
+    s.status=prev.status;
+    s.raw_status=prev.raw;
+    try{localStorage.setItem('api_shipments',JSON.stringify(apiShipments));}catch(e){}
+    return;
+  }
+  rebuildJanzourShipments();
+  updateAPIKPIs();
+  renderAPIShipments();
+  renderHome();
+  toast('✅ تم التسليم — تم تحديث مؤشرات الفروع والمناديب','s');
+  renderJanzour();
+}
+
+function runJanzourCommissionSync(){
+  loadCommissionCfg();
+  buildJanzourSet();
+  const a=getAPIAssignments();
+  const list=janzourShipments;
+  const byEmp={};
+  const seen=new Set();
+  for(const s of list){
+    const emp=(a[s.tracking_code]||'').trim();
+    if(!emp||seen.has(emp))continue;
+    seen.add(emp);
+    let d=0,r=0;
+    for(const x of list){
+      if((a[x.tracking_code]||'').trim()!==emp)continue;
+      const t=commissionClassifyDR(x.status);
+      if(t==='d')d++;else if(t==='r')r++;
+    }
+    const ratio=(d+r)>0?d/(d+r):1;
+    const w=CommissionCfg.ratioMin+(CommissionCfg.ratioMax-CommissionCfg.ratioMin)*Math.max(0,Math.min(1,ratio));
+    const urec=Object.values(USERS).find(v=>v.name===emp);
+    let rp=CommissionCfg.repPercent;
+    if(urec&&urec.janzour_commission_pct!=null&&urec.janzour_commission_pct!==''&&!isNaN(parseFloat(urec.janzour_commission_pct)))
+      rp=parseFloat(urec.janzour_commission_pct);
+    byEmp[emp]={w,rp};
+  }
+  const base=CommissionCfg.unitBase;
+  const bc=commissionRound2(base*(CommissionCfg.branchPercent/100));
+  let n=0;
+  const jCodes=new Set(list.map(s=>s.tracking_code));
+  for(const s of apiShipments){
+    if(!jCodes.has(s.tracking_code))continue;
+    const emp=(a[s.tracking_code]||'').trim();
+    const pack=emp?byEmp[emp]:null;
+    const w=pack?pack.w:CommissionCfg.ratioMax;
+    const rp=pack?pack.rp:CommissionCfg.repPercent;
+    const rep=emp?commissionRound2(base*(rp/100)*w):0;
+    s.rep_commission=rep;
+    s.branch_commission=bc;
+    n++;
+  }
+  localStorage.setItem('api_shipments',JSON.stringify(apiShipments));
+  buildJanzourSet();
+  renderJanzourMetricsTable();
+  renderJanzourPerformanceOverview();
+  toast('✅ تم تحديث عمولات '+n+' طرداً في نطاق جنزور','s');
+}
+function computeServiceKpiForTarget(displayName){
+  buildJanzourSet();
+  const a=getAPIAssignments();
+  const list=janzourShipments.filter(s=>(a[s.tracking_code]||'').trim()===displayName);
+  let d=0,r=0,o=0;
+  for(const s of list){
+    const t=commissionClassifyDR(s.status);
+    if(t==='d')d++;else if(t==='r')r++;else o++;
+  }
+  const term=d+r;
+  const rate=term>0?Math.round(1000*d/term)/10:0;
+  const earnings=commissionRound2(list.reduce((sum,s)=>sum+(parseFloat(s.rep_commission)||0),0));
+  return {total:list.length,rate,earnings,d,r,o};
+}
+function resourceEmployeeServicePerformance(metrics,user){
+  return{
+    user_id:user.username||user.name,
+    name:user.name,
+    total_packages_handled:metrics.total,
+    success_rate_percent:metrics.rate,
+    total_calculated_earnings:metrics.earnings,
+    delivery_vs_return:{deliveries:metrics.d,returns:metrics.r,other_status_shipments:metrics.o}
+  };
+}
+function renderServiceKpiPage(){
+  if(!CU)return;
+  loadCommissionCfg();
+  const mgr=CU.role==='manager';
+  const pick=document.getElementById('skpi-manager-picker');
+  const sel=document.getElementById('skpi-emp');
+  if(pick){
+    pick.style.display=mgr?'block':'none';
+    if(mgr&&sel){
+      const prev=sel.value;
+      sel.innerHTML='<option value="">— أنا —</option>'+Object.keys(USERS).filter(k=>USERS[k].role!=='manager').map(k=>{
+        const u=USERS[k];
+        return`<option value="${String(u.name).replace(/"/g,'&quot;')}">${u.name}</option>`;
+      }).join('');
+      if(prev&&[...sel.options].some(o=>o.value===prev))sel.value=prev;
+    }
+  }
+  const targetName=(mgr&&sel&&sel.value)?sel.value:CU.name;
+  const targetEntry=Object.entries(USERS).find(([,v])=>v.name===targetName);
+  const uObj=targetEntry?{username:targetEntry[0],...targetEntry[1]}:CU;
+  const m=computeServiceKpiForTarget(targetName);
+  const el=id=>document.getElementById(id);
+  if(el('skpi-total'))el('skpi-total').textContent=m.total;
+  if(el('skpi-rate'))el('skpi-rate').textContent=m.rate+'%';
+  if(el('skpi-earn'))el('skpi-earn').textContent=m.earnings;
+  if(el('skpi-d'))el('skpi-d').textContent=m.d;
+  if(el('skpi-r'))el('skpi-r').textContent=m.r;
+  if(el('skpi-o'))el('skpi-o').textContent=m.o;
+  const payload=resourceEmployeeServicePerformance(m,uObj);
+  if(el('skpi-json'))el('skpi-json').textContent=JSON.stringify({success:true,data:payload,generated_at:new Date().toISOString()},null,2);
+}
+function renderCommissionAdminPage(){
+  if(!CU||CU.role!=='manager')return;
+  loadCommissionCfg();
+  const b=document.getElementById('ccfg-base'),r=document.getElementById('ccfg-rep'),br=document.getElementById('ccfg-br');
+  if(b)b.value=CommissionCfg.unitBase;
+  if(r)r.value=CommissionCfg.repPercent;
+  if(br)br.value=CommissionCfg.branchPercent;
+  const box=document.getElementById('commission-emp-rows');
+  if(!box)return;
+  const rows=Object.keys(USERS).filter(k=>USERS[k].role!=='manager').map(k=>{
+    const u=USERS[k];
+    const v=u.janzour_commission_pct!=null&&u.janzour_commission_pct!==''?u.janzour_commission_pct:'';
+    return`<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--rim)">
+      <div style="flex:1;min-width:160px"><strong>${String(u.name).replace(/</g,'&lt;')}</strong><div style="font-size:10px;color:var(--mute);font-family:var(--mono)">${k}</div></div>
+      <div><label style="font-size:11px;color:var(--mute)">عمولة جنزور %</label><br><input type="number" class="fi ca-ov" data-u="${k}" value="${v}" step="0.01" min="0" max="100" style="width:100px;margin-top:4px"></div>
+    </div>`;
+  }).join('');
+  box.innerHTML=rows||'<p style="color:var(--mute)">لا يوجد موظفون</p>';
+}
+function saveCommissionAdminCfg(){
+  CommissionCfg.unitBase=parseFloat(document.getElementById('ccfg-base')?.value)||100;
+  CommissionCfg.repPercent=parseFloat(document.getElementById('ccfg-rep')?.value)||5;
+  CommissionCfg.branchPercent=parseFloat(document.getElementById('ccfg-br')?.value)||2;
+  persistCommissionCfg();
+  toast('✅ تم حفظ إعدادات العمولة','s');
+}
+function saveCommissionOverridesFromAdmin(){
+  document.querySelectorAll('input.ca-ov').forEach(inp=>{
+    const k=inp.dataset.u;
+    if(!k||!USERS[k])return;
+    const raw=inp.value.trim();
+    USERS[k].janzour_commission_pct=raw===''||raw===undefined?null:parseFloat(raw);
+  });
+  saveUsers(USERS);
+  toast('✅ تم حفظ نسب الموظفين','s');
 }
 
 // ═════════════════════════════════
