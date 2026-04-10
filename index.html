@@ -1307,7 +1307,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <button class="btn btn-ghost btn-sm" onclick="gTab('api-shipments')">طرود API</button>
       </div>
     </div>
-    <p style="font-size:12px;color:var(--mute);margin-bottom:14px">مؤشرات طرود <strong>متاجر جنزور</strong> — <strong>معدل النجاح</strong> = تسليم ÷ (تسليم + مرتجع). أعمدة «مع المندوب / في الشركة / متأخر / أخرى» تعكس <strong>حقل الحالة</strong> في بيانات API للطرود غير المُسدَّدة بتسليم أو مرتجع.</p>
+    <p style="font-size:12px;color:var(--mute);margin-bottom:14px">مؤشرات طرود <strong>متاجر جنزور</strong> — <strong>معدل النجاح</strong> = تسليم ÷ (تسليم + مرتجع). أعمدة «مع المندوب / في الشركة / متأخر / أخرى» تعكس <strong>حقل الحالة</strong> في بيانات API للطرود غير المُسدَّدة بتسليم أو مرتجع. إذا رأيت أصفاراً أو أرقاماً أقل من زملائك: اضغط <strong>تحديث</strong> أو افتح تبويب <strong>طرود API</strong> مرة (تُملأ الإعدادات من السحابة ثم تُحفظ الطرود محلياً بعد أول جلب ناجح).</p>
 
     <div class="card" style="margin-bottom:14px;border-right:3px solid var(--pur)">
       <div class="ctitle" style="margin-bottom:8px">📊 معدلات نجاح التسليم — متاجر جنزور</div>
@@ -2062,7 +2062,7 @@ let returns_data=[], transfers_data=[], contacted=new Set(), checked=new Set();
 let seg='all', sPage=1, masterSeg='regions', meTable='', meRecord=null, alphaFilter='';
 let PER=25;
 let autoFetchTimer=null;
-let CFG={critDays:3,warnDays:2,discount:50,company:'النورس للشحن',mgrPhone:''};
+let CFG={critDays:3,warnDays:2,discount:50,company:'النورس للشحن',mgrPhone:'',apiUrl:'',apiToken:'',apiAutoInterval:0};
 let WA_TPLS=[
   {id:'reminder',name:'تذكير بالتسليم',tag:'عام',body:'السلام عليكم {اسم} 👋\nتذكير من {شركة}\n\nلديك {طرود} طرد متأخر\nأعلى تأخير: {أيام} يوم\n\n📦 أكواد الطرود:\n{أكواد}\n\n⚠️ يرجى اتخاذ إجراء فوري\nشكراً'},
   {id:'urgent',name:'تنبيه عاجل',tag:'عاجل',body:'🚨 تنبيه عاجل — {شركة}\n\nالأخ {اسم}\nلديك {طرود} طرد في وضع حرج ({أيام} يوم)\n\n📦 أكواد الطرود الحرجة:\n{أكواد}\n\nيرجى التواصل فوراً مع المشرف\n— إدارة {شركة}'},
@@ -2273,8 +2273,8 @@ async function startApp(){
   updateStatusFilters();
   loadCustomTemplates();
   loadCachedAPIShipments();
-  // Auto-sync API shipments after drivers are loaded
-  setTimeout(autoSyncAPI,1500);
+  /* مزامنة طرود API من إعدادات السحابة (CFG) — أسرع قليلاً حتى تتطابق لوحات جنزور بين الأجهزة */
+  setTimeout(autoSyncAPI,500);
   loadCachedAPIShipments();
 }
 
@@ -2353,8 +2353,19 @@ async function loadAll(){
       if(r.key==='warnDays')CFG.warnDays=parseInt(r.value)||7;
       if(r.key==='company')CFG.company=r.value;
       if(r.key==='mgrPhone')CFG.mgrPhone=r.value;
-      if(r.key==='api_url'&&document.getElementById('api-url'))document.getElementById('api-url').value=r.value;
-      if(r.key==='api_token'&&document.getElementById('api-token'))document.getElementById('api-token').value=r.value;
+      if(r.key==='api_url'){
+        CFG.apiUrl=String(r.value||'').trim();
+        const v=r.value||'';
+        const u1=document.getElementById('api-url');if(u1)u1.value=v;
+        const u2=document.getElementById('api-url2');if(u2)u2.value=v;
+      }
+      if(r.key==='api_token'){
+        CFG.apiToken=String(r.value||'').trim();
+        const v=r.value||'';
+        const t1=document.getElementById('api-token');if(t1)t1.value=v;
+        const t2=document.getElementById('api-token2');if(t2)t2.value=v;
+      }
+      if(r.key==='api_auto_interval')CFG.apiAutoInterval=parseInt(r.value,10)||0;
       if(r.key==='nawris_commission_cfg'){
         try{Object.assign(CommissionCfg,JSON.parse(r.value));localStorage.setItem('nawris_commission_cfg',r.value);}catch(e){}
       }
@@ -3994,8 +4005,18 @@ function gTab(id){
     returns:renderReturns,
     transfers:renderTransfers,
     'api-shipments':()=>{loadCachedAPIShipments();updateAPIKPIs();renderAPIShipments();renderAPIFetchLog();},
-    janzour:()=>{buildJanzourSet();renderJanzour();},
-    'janzour-rates':()=>{renderJanzourRatesPage();},
+    janzour:()=>{
+      buildJanzourSet();
+      renderJanzour();
+      const hasUrl=(CFG.apiUrl||document.getElementById('api-url')?.value||document.getElementById('api-url2')?.value||'').trim();
+      if(!apiShipments.length&&hasUrl)autoSyncAPI();
+    },
+    'janzour-rates':()=>{
+      renderJanzourRatesPage();
+      /* إن كانت الذاكرة المحلية فارغة (موظف جديد / متصفح نظيف) نعيد مزامنة API فور فتح التبويب */
+      const hasUrl=(CFG.apiUrl||document.getElementById('api-url')?.value||document.getElementById('api-url2')?.value||'').trim();
+      if(!apiShipments.length&&hasUrl)autoSyncAPI();
+    },
     'service-kpi':()=>{renderServiceKpiPage();},
     'commission-admin':()=>{if(!CU||CU.role!=='manager'){toast('هذه الشاشة للمدير فقط','e');return;}renderCommissionAdminPage();},
     whatsapp:renderWA,
@@ -4641,7 +4662,7 @@ function updateStatusFilters(){
 // ══════════════════════════════════════════
 // API SHIPMENTS PAGE
 // ══════════════════════════════════════════
-let apiShipments=[], apiSeg='all', aPage=1, aPER=25, apiChecked=new Set(), autoFetchTimer2=null;
+let apiShipments=[], apiSeg='all', aPage=1, aPER=25, apiChecked=new Set(), autoFetchTimer2=null, apiAutoSyncBusy=false;
 let apiFetchLog=[];
 
 // ══════════════════════════════════════════
@@ -4700,11 +4721,12 @@ function janzourNoteSelectHtml(selectedNote){
 }
 
 function buildJanzourSet(){
-  // Prefer live Supabase stores list over seed
-  const sourceNames= (typeof stores!=='undefined'&&stores.length)
+  /* ادمج القائمة الافتراضية مع جدول المتاجر: إن حجب RLS جدول stores عن موظف لا يفقد نطاق جنزور بالكامل، والمدير يحصل على الاتحاد كاملاً */
+  const seed=JANZOUR_STORES_SEED.map(n=>n.trim().toLowerCase()).filter(Boolean);
+  const fromDb=(typeof stores!=='undefined'&&stores.length)
     ? stores.map(s=>(s.name||'').trim().toLowerCase()).filter(Boolean)
-    : JANZOUR_STORES_SEED.map(n=>n.trim().toLowerCase());
-  janzourStoreSet=new Set(sourceNames);
+    : [];
+  janzourStoreSet=new Set([...seed,...fromDb]);
   rebuildJanzourShipments();
 }
 function rebuildJanzourShipments(){
@@ -4738,18 +4760,17 @@ document.addEventListener('click',e=>{
 });
 
 async function fetchAPIShipments(){
-  // Try to get API settings from the upload page inputs or from saved settings
-  let url=document.getElementById('api-url2')?.value?.trim()||document.getElementById('api-url')?.value?.trim()||'';
-  let token=document.getElementById('api-token2')?.value?.trim()||document.getElementById('api-token')?.value?.trim()||'';
+  // حقول الصفحة ← CFG (مُعبأ من loadAll لكل المستخدمين) ← جلب إضافي من settings عند الحاجة
+  let url=document.getElementById('api-url2')?.value?.trim()||document.getElementById('api-url')?.value?.trim()||(CFG.apiUrl||'').trim()||'';
+  let token=document.getElementById('api-token2')?.value?.trim()||document.getElementById('api-token')?.value?.trim()||(CFG.apiToken||'').trim()||'';
   const delayField=document.getElementById('api-delay-field')?.value?.trim()||'delay_days';
 
   if(!url){
-    // Try loading from Supabase settings
     try{
       const cfg=await sb('settings','GET',null,'?select=key,value');
       cfg.forEach(r=>{
-        if(r.key==='api_url')url=r.value||'';
-        if(r.key==='api_token')token=r.value||'';
+        if(r.key==='api_url')url=String(r.value||'').trim();
+        if(r.key==='api_token')token=String(r.value||'').trim();
       });
     }catch(e){}
   }
@@ -5609,33 +5630,39 @@ function enrichAPICaptainPhones(){
   if(unmatched.length>0)console.log(`⚠️ Unmatched captains:`,unmatched);
 }
 
-// ── AUTO-SYNC: Fetch API on page load if settings exist ──
+// ── AUTO-SYNC: بعد loadAll يُعبأ CFG — لا تعتمد على جلب settings ثانٍ فقط (نفس البيانات لكل الموظفين الذين يقرأون الإعدادات في التحميل الأول) ──
 async function autoSyncAPI(){
+  if(apiAutoSyncBusy)return;
+  apiAutoSyncBusy=true;
   try{
-    const cfg=await sb('settings','GET',null,'?select=key,value');
-    let url='',token='',interval=0;
-    cfg.forEach(r=>{
-      if(r.key==='api_url')url=r.value||'';
-      if(r.key==='api_token')token=r.value||'';
-      if(r.key==='api_auto_interval')interval=parseInt(r.value)||0;
-    });
+    let url=(CFG.apiUrl||'').trim();
+    let token=(CFG.apiToken||'').trim();
+    let interval=CFG.apiAutoInterval||0;
+    if(!url||!token){
+      try{
+        const cfg=await sb('settings','GET',null,'?select=key,value');
+        cfg.forEach(r=>{
+          if(r.key==='api_url'&&!url)url=String(r.value||'').trim();
+          if(r.key==='api_token'&&!token)token=String(r.value||'').trim();
+          if(r.key==='api_auto_interval'&&!interval)interval=parseInt(r.value,10)||0;
+        });
+      }catch(e){}
+    }
     if(!url)return;
-    // Set inputs
-    const u2=document.getElementById('api-url2');if(u2)u2.value=url;
-    const t2=document.getElementById('api-token2');if(t2)t2.value=token;
-    const u1=document.getElementById('api-url');if(u1)u1.value=url;
-    const t1=document.getElementById('api-token');if(t1)t1.value=token;
+    const u2=document.getElementById('api-url2');if(u2&&!u2.value.trim())u2.value=url;
+    const t2=document.getElementById('api-token2');if(t2&&!t2.value.trim())t2.value=token;
+    const u1=document.getElementById('api-url');if(u1&&!u1.value.trim())u1.value=url;
+    const t1=document.getElementById('api-token');if(t1&&!t1.value.trim())t1.value=token;
     if(interval>0){
       const iv=document.getElementById('api-interval2');if(iv)iv.value=interval;
     }
-    // Auto-fetch on load
     await fetchAPIShipments();
-    // Set auto-refresh timer
     if(interval>0){
       if(autoFetchTimer2)clearInterval(autoFetchTimer2);
       autoFetchTimer2=setInterval(fetchAPIShipments,interval*3600000);
     }
   }catch(e){console.warn('autoSyncAPI',e);}
+  finally{apiAutoSyncBusy=false;}
 }
 
 // Load cached API shipments on startup
