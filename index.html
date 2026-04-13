@@ -1258,6 +1258,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <select class="fi" id="j-fcap" onchange="renderJanzour()" style="min-width:130px"><option value="">👤 كل المناديب</option></select>
       <select class="fi" id="j-fbranch" onchange="renderJanzour()" style="min-width:120px"><option value="">🏢 كل الفروع</option></select>
       <select class="fi" id="j-fgov" onchange="renderJanzour()" style="min-width:120px"><option value="">🗺️ كل المحافظات</option></select>
+      <select class="fi" id="j-fstore" onchange="renderJanzour()" style="min-width:160px;max-width:220px" title="فلتر حسب اسم المتجر / العميل"><option value="">🏪 كل المتاجر</option></select>
       <select class="fi" id="j-fstatus" onchange="renderJanzour()" style="min-width:130px">
         <option value="">🔘 كل الحالات</option>
         <option value="with_driver">🚗 مع المندوب</option>
@@ -5311,7 +5312,7 @@ document.addEventListener('click',e=>{
   if(jcrseg)setJCrSeg(jcrseg.dataset.jcrseg);
 });
 function resetJanzourFilters(){
-  ['j-q','j-fcap','j-fbranch','j-fgov','j-fstatus'].forEach(id=>{const el=document.getElementById(id);if(el){if(el.tagName==='INPUT')el.value='';else el.selectedIndex=0;}});
+  ['j-q','j-fcap','j-fbranch','j-fgov','j-fstore','j-fstatus'].forEach(id=>{const el=document.getElementById(id);if(el){if(el.tagName==='INPUT')el.value='';else el.selectedIndex=0;}});
   janzourCrSeg='all';
   document.querySelectorAll('[data-jcrseg]').forEach(el=>el.classList.toggle('on',el.dataset.jcrseg==='all'));
   setJSeg('all');
@@ -5375,11 +5376,13 @@ function renderJanzour(){
     rebuildSelect('j-fcap','👤 كل المناديب',new Set(janzourShipments.map(s=>s.captain).filter(Boolean)));
     rebuildSelect('j-fbranch','🏢 كل الفروع',new Set(janzourShipments.map(s=>s.current_branch).filter(Boolean)));
     rebuildSelect('j-fgov','🗺️ كل المحافظات',new Set(janzourShipments.map(s=>s.government).filter(Boolean)));
+    rebuildSelect('j-fstore','🏪 كل المتاجر',new Set(janzourShipments.map(s=>s.client_name).filter(Boolean)));
   }
 
   const fcap=(document.getElementById('j-fcap')?.value||'').trim();
   const fbranch=(document.getElementById('j-fbranch')?.value||'').trim();
   const fgov=(document.getElementById('j-fgov')?.value||'').trim();
+  const fstore=(document.getElementById('j-fstore')?.value||'').trim();
   const fstatus=(document.getElementById('j-fstatus')?.value||'').trim();
 
   // ── INDEPENDENT FILTER — does NOT affect apiShipments ──
@@ -5394,6 +5397,7 @@ function renderJanzour(){
   if(fcap)list=list.filter(s=>String(s.captain||'').trim()===fcap);
   if(fbranch)list=list.filter(s=>String(s.current_branch||'').trim()===fbranch);
   if(fgov)list=list.filter(s=>String(s.government||'').trim()===fgov);
+  if(fstore)list=list.filter(s=>String(s.client_name||'').trim()===fstore);
   if(fstatus)list=list.filter(s=>s.status===fstatus);
   if(q)list=list.filter(s=>`${s.client_name} ${s.tracking_code} ${s.captain} ${s.current_branch} ${s.government}`.toLowerCase().includes(q));
 
