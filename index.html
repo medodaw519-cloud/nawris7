@@ -2463,27 +2463,42 @@ function ctBadge(id){return contacted.has(String(id))?'<span class="badge b-grn"
 function normPhone(p){if(!p)return'';p=String(p).replace(/[^0-9]/g,'');if(p.startsWith('0')&&p.length===10)p='218'+p.slice(1);return p;}
 
 // Contact Result helpers — Supabase first, localStorage fallback
-function getCR(sid){
-  const db=contact_results_db.find(r=>String(r.shipment_id)===String(sid));
+function getCR(sid,trackingCode=''){
+  const sidStr=String(sid??'').trim();
+  const tcStr=String(trackingCode||'').trim();
+  const sidAsCode=sidStr.startsWith('api_')?sidStr.slice(4):sidStr;
+  const db=contact_results_db.find(r=>{
+    const rid=String(r.shipment_id||'').trim();
+    const rtc=String(r.tracking_code||'').trim();
+    return (sidStr&&rid===sidStr)
+      || (sidStr&&rtc===sidStr)
+      || (sidAsCode&&rtc===sidAsCode)
+      || (tcStr&&rtc===tcStr);
+  });
   if(db)return{result:db.result||'',note:db.note||'',by:db.updated_by||''};
-  const local=localStorage.getItem('cr_'+sid)||'';
-  return{result:local,note:localStorage.getItem('note_'+sid)||'',by:''};
+  const local=localStorage.getItem('cr_'+sidStr)||localStorage.getItem('cr_'+sidAsCode)||'';
+  const note=localStorage.getItem('note_'+sidStr)||localStorage.getItem('note_'+sidAsCode)||'';
+  return{result:local,note:note,by:''};
 }
 async function saveCR(sid,result,note){
-  const s=shipments.find(x=>String(x.id)===String(sid))
-         ||apiShipments.find(x=>String(x.id)===String(sid));
+  const sidStr=String(sid??'').trim();
+  const s=shipments.find(x=>String(x.id)===sidStr||String(x.tracking_code||'')===sidStr)
+         ||apiShipments.find(x=>String(x.id)===sidStr||String(x.tracking_code||'')===sidStr);
+  const trackingCode=String(s?.tracking_code|| (sidStr.startsWith('api_')?sidStr.slice(4):sidStr) ||'').trim();
   const userName=CU?.name||'—';
-  const payload={shipment_id:String(sid),tracking_code:s?.tracking_code||'',result:result||'',note:note||'',updated_by:userName};
+  const payload={shipment_id:sidStr,tracking_code:trackingCode,result:result||'',note:note||'',updated_by:userName};
   try{
-    // Check local cache first to decide INSERT vs UPDATE
-    const existing=contact_results_db.find(r=>String(r.shipment_id)===String(sid));
+    // Find existing by shipment_id OR tracking_code so same parcel stays one row across days/imports
+    const existing=contact_results_db.find(r=>
+      String(r.shipment_id||'')===sidStr || (trackingCode&&String(r.tracking_code||'')===trackingCode)
+    );
     let r;
     if(existing){
-      // Record exists → PATCH (UPDATE) by shipment_id
-      r=await fetch(`${SB}/rest/v1/contact_results?shipment_id=eq.${encodeURIComponent(String(sid))}`,{
+      // Record exists → PATCH by row id (stable and unambiguous)
+      r=await fetch(`${SB}/rest/v1/contact_results?id=eq.${encodeURIComponent(String(existing.id))}`,{
         method:'PATCH',
         headers:{...H,'Prefer':'return=minimal'},
-        body:JSON.stringify({result:result||'',note:note||'',updated_by:userName})
+        body:JSON.stringify({shipment_id:sidStr,tracking_code:trackingCode,result:result||'',note:note||'',updated_by:userName})
       });
     } else {
       // No record yet → try INSERT, fallback to PATCH if duplicate
@@ -2496,10 +2511,10 @@ async function saveCR(sid,result,note){
       if(!r.ok){
         const errTxt=await r.text();
         if(errTxt.includes('23505')||errTxt.includes('duplic')){
-          r=await fetch(`${SB}/rest/v1/contact_results?shipment_id=eq.${encodeURIComponent(String(sid))}`,{
+          r=await fetch(`${SB}/rest/v1/contact_results?shipment_id=eq.${encodeURIComponent(sidStr)}`,{
             method:'PATCH',
             headers:{...H,'Prefer':'return=minimal'},
-            body:JSON.stringify({result:result||'',note:note||'',updated_by:userName})
+            body:JSON.stringify({shipment_id:sidStr,tracking_code:trackingCode,result:result||'',note:note||'',updated_by:userName})
           });
         } else {
           toast('خطأ في حفظ النتيجة: '+errTxt.substring(0,60),'e');return false;
@@ -2508,7 +2523,7 @@ async function saveCR(sid,result,note){
     }
     if(!r.ok){const e=await r.text();toast('خطأ في حفظ النتيجة: '+e.substring(0,60),'e');return false;}
     // Update local cache
-    if(existing){existing.result=result;existing.note=note;existing.updated_by=userName;}
+    if(existing){existing.shipment_id=sidStr;existing.tracking_code=trackingCode;existing.result=result;existing.note=note;existing.updated_by=userName;}
     else contact_results_db.push(payload);
     if(s)writeCrSnap(sid,s);
     return true;
@@ -2796,7 +2811,7 @@ function renderShipments(){
     if(fcontact==='contacted'&&!contacted.has(String(s.id)))return false;
     if(fcontact==='not_contacted'&&contacted.has(String(s.id)))return false;
     if(fcr){
-      const cr=getCR(s.id).result;
+      const cr=getCR(s.id,s.tracking_code).result;
       if(fcr==='none'&&cr!=='')return false;
       if(fcr!=='none'&&cr!==fcr)return false;
     }
@@ -2817,7 +2832,7 @@ function renderShipments(){
   if(!page.length){tbody.innerHTML=`<tr><td colspan="17" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج</td></tr>`;buildPgn(total,totalP);return;}
   tbody.innerHTML=page.map((s,idx)=>{
     const sid=String(s.id).replace(/"/g,'&quot;');
-    const crData=getCR(s.id);
+    const crData=getCR(s.id,s.tracking_code);
     const note=(crData.note||localStorage.getItem('note_'+s.id)||'').replace(/"/g,'&quot;');
     const att=parseInt(localStorage.getItem('att_'+s.id)||'0');
     const lct=localStorage.getItem('lct_'+s.id)||'';
@@ -4254,22 +4269,24 @@ async function renderStaff(){
   const users=Object.entries(USERS);
   const crLabels={solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
 
-  // Count from Supabase contact_results_db
+  // Count from Supabase contact_results_db (unique by tracking_code if available)
   let totalFollowed=0,totalSolved=0,totalContacted=0,totalNoAnswer=0,totalPending=0,totalNone=0;
-  const crIndex={};
-  contact_results_db.forEach(r=>{crIndex[r.shipment_id]=r;});
-  shipments.forEach(s=>{
-    const cr=crIndex[s.id];
-    if(cr&&cr.result){
-      totalFollowed++;
-      if(cr.result==='solved')totalSolved++;
-      else if(cr.result==='contacted')totalContacted++;
-      else if(cr.result==='no_answer')totalNoAnswer++;
-      else if(cr.result==='pending')totalPending++;
-    } else totalNone++;
+  const uniqueCR={};
+  contact_results_db.forEach(r=>{
+    const key=String(r.tracking_code||r.shipment_id||'').trim();
+    if(!key)return;
+    uniqueCR[key]=r;
   });
-
+  Object.values(uniqueCR).forEach(cr=>{
+    if(!cr||!cr.result)return;
+    totalFollowed++;
+    if(cr.result==='solved')totalSolved++;
+    else if(cr.result==='contacted')totalContacted++;
+    else if(cr.result==='no_answer')totalNoAnswer++;
+    else if(cr.result==='pending')totalPending++;
+  });
   const combinedTotal=shipments.length+apiShipments.length;
+  totalNone=Math.max(0,combinedTotal-totalFollowed);
 
   // KPIs
   document.getElementById('staff-kpis').innerHTML=`
@@ -4386,7 +4403,7 @@ async function renderStaff(){
       empStats[emp].total++;
       if(cls(s.delay_days)==='critical')empStats[emp].crit++;
       else if(cls(s.delay_days)==='warning')empStats[emp].warn++;
-      const cr=getCR(s.id);
+      const cr=getCR(s.id,s.tracking_code);
       if(cr.result==='solved'||cr.result==='contacted')empStats[emp].done++;
       else if(cr.result==='pending')empStats[emp].pending++;
       else if(cr.result==='no_answer')empStats[emp].noAnswer++;
@@ -4497,7 +4514,7 @@ function renderStaffShipments(){
 
   // ── Source 1: API shipments ──
   const apiList=apiShipments.map(s=>{
-    const cr=getCR(s.id); // s.id = 'api_'+code
+    const cr=getCR(s.id,s.tracking_code); // s.id = 'api_'+code
     const emp=cr.by||(assignments[s.tracking_code]||'');
     return{
       _sid:String(s.id),
@@ -4516,7 +4533,7 @@ function renderStaffShipments(){
 
   // ── Source 2: Supabase shipments ──
   const sbList=shipments.map(s=>{
-    const cr=getCR(s.id); // s.id = integer
+    const cr=getCR(s.id,s.tracking_code); // s.id = integer
     return{
       _sid:String(s.id),
       code:s.tracking_code||'—',
@@ -5382,7 +5399,7 @@ function renderJanzour(){
     tbody.innerHTML=page.map((s,i)=>{
       const ph=s.customer_phone&&s.customer_phone!=='—'&&s.customer_phone!=='undefined';
       const waBtn=ph?`<button class="btn btn-wa btn-sm" onclick="apiWA('${s.id}','receiver')" style="font-size:10px;padding:3px 6px">📱</button>`:'';
-      const crData=getCR(s.id);
+      const crData=getCR(s.id,s.tracking_code);
       const crColor=crData.result==='solved'?'var(--grn)':crData.result==='contacted'?'var(--blu)':crData.result==='no_answer'?'var(--red)':crData.result==='pending'?'var(--gold)':'';
       const sid=s.id.replace(/'/g,"\\'");
       return`<tr class="pr" style="${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}">
@@ -5417,7 +5434,7 @@ function renderJanzour(){
     page.forEach((s,i)=>{
       const sel=document.getElementById('jcr-'+i);
       if(sel){
-        const cr=getCR(s.id);
+        const cr=getCR(s.id,s.tracking_code);
         sel.value=cr.result||'';
         const c=cr.result==='solved'?'var(--grn)':cr.result==='contacted'?'var(--blu)':cr.result==='no_answer'?'var(--red)':cr.result==='pending'?'var(--gold)':'';
         sel.style.color=c;
