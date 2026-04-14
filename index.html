@@ -2142,28 +2142,9 @@ async function sbAll(table,baseParams=''){
   }
   return all;
 }
-function formatSbErr(raw){
-  const s=String(raw||'');
-  try{
-    const j=JSON.parse(s);
-    const code=String(j.code||'');
-    const msg=String(j.message||'').toLowerCase();
-    if(code==='23505'||msg.includes('duplicate key')){
-      if(msg.includes('drivers_name'))return 'اسم المندوب مستخدم مسبقاً — عدّل السجل من القائمة أو اختر اسماً مختلفاً.';
-      return 'قيمة مكررة تخالف قيداً فريداً في قاعدة البيانات.';
-    }
-  }catch(_){}
-  if(s.includes('drivers_name_key')||s.includes('"23505"'))return 'اسم المندوب مستخدم مسبقاً — عدّل السجل من القائمة أو اختر اسماً مختلفاً.';
-  return s.length>280?s.slice(0,280)+'…':s;
-}
-async function sbUp(table,data,conflict='merge-duplicates',onConflict=null){
+async function sbUp(table,data,conflict='merge-duplicates'){
   const prefer=conflict==='ignore'?'resolution=ignore-duplicates,return=minimal':'resolution=merge-duplicates,return=minimal';
-  let url=`${SB}/rest/v1/${table}`;
-  if(onConflict){
-    const oc=Array.isArray(onConflict)?onConflict.join(','):String(onConflict);
-    url+=(url.includes('?')?'&':'?')+'on_conflict='+encodeURIComponent(oc);
-  }
-  const r=await fetch(url,{method:'POST',headers:{...H,'Prefer':prefer},body:JSON.stringify(Array.isArray(data)?data:[data])});
+  const r=await fetch(`${SB}/rest/v1/${table}`,{method:'POST',headers:{...H,'Prefer':prefer},body:JSON.stringify(Array.isArray(data)?data:[data])});
   if(!r.ok){const e=await r.text();throw new Error(e);}
   return true;
 }
@@ -3486,13 +3467,9 @@ async function saveMasterRecord(){
     if(meRecord){
       const r=await fetch(`${SB}/rest/v1/${meTable}?id=eq.${meRecord.id}`,{method:'PATCH',headers:{...H,'Prefer':'return=minimal'},body:JSON.stringify(body)});
       if(!r.ok)throw new Error(await r.text());
-    } else if(meTable==='drivers'){
-      /* قيد فريد على name — upsert حتى لا يفشل «إضافة» لمندوب موجود بالاسم */
-      await sbUp(meTable,[body],'merge-duplicates','name');
     } else await sbUp(meTable,[body]);
     toast('✅ تم الحفظ','s');closeM('me-modal');renderMasterContent();
-    if(meTable==='drivers')await loadAll(); /* تحديث drivers_db للشاشات الأخرى */
-  }catch(e){toast('خطأ: '+formatSbErr(e.message),'e');}
+  }catch(e){toast('خطأ: '+e.message,'e');}
 }
 async function deleteMaster(table,id){
   if(!confirm('حذف هذا السجل؟'))return;
@@ -3569,16 +3546,17 @@ async function uploadStatic(rows,table){
       allKeys.forEach(k=>n[k]=r[k]!==undefined?r[k]:null);
       return n;
     });
-    const driverUpsert=table==='drivers';
     for(let i=0;i<normalized.length;i+=BATCH){
       const batch=normalized.slice(i,i+BATCH);
-      const path=driverUpsert?`${SB}/rest/v1/${table}?on_conflict=name`:`${SB}/rest/v1/${table}`;
-      const preferHdr=driverUpsert?'resolution=merge-duplicates,return=minimal':'resolution=ignore-duplicates,return=minimal';
-      const res=await fetch(path,{method:'POST',headers:{...H,'Prefer':preferHdr},body:JSON.stringify(batch)});
+      const res=await fetch(`${SB}/rest/v1/${table}`,{
+        method:'POST',
+        headers:{...H,'Prefer':'resolution=ignore-duplicates,return=minimal'},
+        body:JSON.stringify(batch)
+      });
       if(res.ok) success+=batch.length;
       else {
         const err=await res.text();
-        if(!driverUpsert&&(err.includes('duplicate')||err.includes('unique')||err.includes('PGRST'))) success+=batch.length;
+        if(err.includes('duplicate')||err.includes('unique')||err.includes('PGRST')) success+=batch.length;
         else throw new Error(err);
       }
     }
@@ -4888,18 +4866,6 @@ async function fetchAPIShipments(){
       try{
         if(!captain&&r.driver&&typeof r.driver==='object')captain=String(r.driver.name||r.driver.full_name||'').trim();
       }catch(e){}
-      let captainPhoneFromApi='';
-      try{
-        let dn='';
-        if(r.driver&&typeof r.driver==='object')dn=String(r.driver.phone||r.driver.mobile||r.driver.phone_number||r.driver.telephone||'').trim();
-        captainPhoneFromApi=String(
-          r.captain_phone||r.captainPhone||r.driver_phone||r.driverPhone||r.courier_phone||r.delivery_man_phone
-          ||r.captain_mobile||r.driver_mobile||r.assignee_phone
-          ||r['هاتف المندوب']||r['رقم المندوب']||r['موبايل المندوب']||r['جوال المندوب']||r['هاتف مندوب التوصيل']
-          ||dn||''
-        ).trim();
-      }catch(e){}
-      const captainPhoneNorm=captainPhoneFromApi?normPhone(captainPhoneFromApi)||captainPhoneFromApi:'';
       const currentBranch=String(r.current_branch||r.branch_name||r['الفرع الحالى']||r['الفرع']||'').trim();
       const government=String(r.government||r['المحافظة']||'').trim();
       const area=String(r.area||r.region_name||r['المنطقة']||'').trim();
@@ -4916,7 +4882,7 @@ async function fetchAPIShipments(){
         customer_phone:receiverPhone,
         captain:captain,
         driver_name:captain,
-        captain_phone:captainPhoneNorm,
+        captain_phone:'',
         current_branch:currentBranch,
         government:government,
         area:area,
@@ -5474,7 +5440,6 @@ function openAPIDetail(sid){
         <div class="sd-panel-h" style="color:var(--pur)">👤 المندوب والموقع</div>
         ${rrow('المندوب',`<strong>${s.captain||'—'}</strong>`)}
         ${rrow('هاتف المندوب',capPhone?`<span class="sd-phone" dir="ltr">${capPhone}</span>`:'—')}
-        ${!capPhone&&(s.captain&&s.captain!=='—')?`<div style="font-size:11px;color:var(--mute);margin:-6px 0 10px;line-height:1.45;border-right:2px solid var(--gold);padding-right:8px">رفع Excel من «رفع البيانات» لا يستبدل جدول المناديب في السحابة. افتح <strong>البيانات الثابتة</strong> من القائمة → اختر تبويب <strong>👤 المناديب</strong> → <strong>+ إضافة</strong>، والاسم كما في الطرد (<strong>${String(s.captain).replace(/</g,'&lt;')}</strong>) والهاتف المطلوب، ثم احفظ و<strong>أعد جلب طرود API</strong>.</div>`:''}
         ${rrow('المنطقة',s.area||'—')}
         ${rrow('المحافظة',s.government||'—')}
         ${rrow('الفرع',branchName||'—')}
@@ -5624,10 +5589,9 @@ async function moveAPIToMain(s){
   }catch(e){toast('خطأ: '+e.message,'e');}
 }
 
-// ── ENRICH CAPTAIN PHONES FROM DRIVERS DB (البيانات الثابتة → المناديب)؛ إن لم يوجد سجل يُبقى رقم الـ API إن وُجد ──
+// ── ENRICH CAPTAIN PHONES FROM DRIVERS DB ──
 function enrichAPICaptainPhones(){
-  if(!apiShipments.length)return;
-  if(!drivers_db.length)return;
+  if(!apiShipments.length||!drivers_db.length)return;
   // Build lookup maps: exact name, fuzzy name
   const byName={};
   drivers_db.forEach(d=>{if(d.name)byName[d.name.trim()]=d;});
@@ -5636,23 +5600,23 @@ function enrichAPICaptainPhones(){
   apiShipments.forEach(s=>{
     if(!s.captain||s.captain==='—'||s.captain==='undefined')return;
     const cap=s.captain.trim();
-    const capParts=cap.split(/\s+/).filter(Boolean);
-    const singleToken=capParts.length===1;
     // 1. Exact match
     let drv=byName[cap];
-    // 2. Fuzzy يشمل الاسم — لا نستخدمه لاسم مكوّن من كلمة واحدة (مثلاً «احمد») حتى لا يُلتقط أول سجل فيه نفس الجزء
-    if(!drv&&!singleToken){
+    // 2. Fuzzy: API name contains DB name or vice versa
+    if(!drv){
       const dk=Object.keys(byName).find(k=>k.includes(cap)||cap.includes(k));
       if(dk)drv=byName[dk];
     }
-    // 3. Fuzzy: أول/آخر جزء — لأسماء من كلمتين فأكثر
-    if(!drv&&capParts.length>=2){
-      const dk=Object.keys(byName).find(k=>{
-        const kParts=k.split(/\s+/).filter(Boolean);
-        if(kParts.length<2)return false;
-        return capParts[0]===kParts[0] || capParts[capParts.length-1]===kParts[kParts.length-1];
-      });
-      if(dk)drv=byName[dk];
+    // 3. Fuzzy: strip spaces, try first/last name
+    if(!drv){
+      const capParts=cap.split(/\s+/);
+      if(capParts.length>=2){
+        const dk=Object.keys(byName).find(k=>{
+          const kParts=k.split(/\s+/);
+          return capParts[0]===kParts[0] || capParts[capParts.length-1]===kParts[kParts.length-1];
+        });
+        if(dk)drv=byName[dk];
+      }
     }
     if(drv&&drv.phone){
       s.captain_phone=normPhone(drv.phone)||drv.phone;
