@@ -952,11 +952,14 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div style="padding:10px 16px;border-top:1px solid var(--rim);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--mute)" id="s-pginfo">—</span>
         <select class="fi" id="s-perpage" onchange="changePerPage(this.value)" style="font-size:11px;padding:3px 8px;min-width:auto">
+          <option value="10">10</option>
           <option value="25" selected>25</option>
           <option value="50">50</option>
+          <option value="75">75</option>
           <option value="100">100</option>
+          <option value="200">200</option>
+          <option value="500">500</option>
           <option value="1000">1000</option>
-          <option value="1500">1500</option>
         </select>
         <span style="font-size:11px;color:var(--mute)">لكل صفحة</span>
         <div style="flex:1"></div>
@@ -1183,11 +1186,11 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div style="padding:10px 16px;border-top:1px solid var(--rim);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--mute)" id="a-pginfo">—</span>
         <select class="fi" id="a-perpage" onchange="changeAPIPerPage(this.value)" style="font-size:11px;padding:3px 8px;min-width:auto">
+          <option value="10">10</option>
           <option value="25" selected>25</option>
           <option value="50">50</option>
           <option value="100">100</option>
-          <option value="1000">1000</option>
-          <option value="1500">1500</option>
+          <option value="200">200</option>
         </select>
         <span style="font-size:11px;color:var(--mute)">لكل صفحة</span>
         <div style="flex:1"></div>
@@ -1288,14 +1291,6 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
     </div>
     <div style="padding:10px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span style="font-size:11px;color:var(--mute)" id="j-pginfo">—</span>
-      <select class="fi" id="j-perpage" onchange="changeJanzourPerPage(this.value)" style="font-size:11px;padding:3px 8px;min-width:auto">
-        <option value="25" selected>25</option>
-        <option value="50">50</option>
-        <option value="100">100</option>
-        <option value="1000">1000</option>
-        <option value="1500">1500</option>
-      </select>
-      <span style="font-size:11px;color:var(--mute)">لكل صفحة</span>
       <div style="flex:1"></div>
       <div class="pgn" id="j-pgn"></div>
     </div>
@@ -1543,7 +1538,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div style="padding:10px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--mute)" id="sf-pginfo">—</span>
         <select class="fi" id="sf-per" onchange="sfPage=1;renderStaffShipments()" style="font-size:11px;padding:3px 8px;min-width:auto">
-          <option value="25" selected>25</option><option value="50">50</option><option value="100">100</option><option value="1000">1000</option><option value="1500">1500</option>
+          <option value="25">25</option><option value="50" selected>50</option><option value="100">100</option>
         </select>
         <span style="font-size:11px;color:var(--mute)">لكل صفحة</span>
         <div style="flex:1"></div>
@@ -5489,7 +5484,6 @@ function buildAPIPgn(total,totalP){
 }
 
 function changeAPIPerPage(val){aPER=parseInt(val)||25;aPage=1;renderAPIShipments();}
-function changeJanzourPerPage(val){jPER=parseInt(val)||25;jPage=1;renderJanzour();}
 
 // Global onclick handlers for API shipment buttons
 function openAPIDetail(sid){
