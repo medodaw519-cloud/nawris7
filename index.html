@@ -2566,6 +2566,14 @@ async function saveCR(sid,result,note){
 
     if(!row)row=payload;
     applyLocal(row);
+    try{
+      localStorage.setItem('cr_'+sidStr,String(result||''));
+      localStorage.setItem('note_'+sidStr,String(note||''));
+      if(trackingCode){
+        localStorage.setItem('cr_'+trackingCode,String(result||''));
+        localStorage.setItem('note_'+trackingCode,String(note||''));
+      }
+    }catch(_){}
     invalidateCrLookup();
     if(s)writeCrSnap(sid,s);
     return true;
@@ -2912,7 +2920,7 @@ function renderShipments(){
   }).join('');
   if(!tbody._del){
     tbody._del=true;
-    tbody.addEventListener('click',e=>{
+    tbody.addEventListener('click',async e=>{
       const btn=e.target.closest('[data-a]');
       const row=e.target.closest('.pr');
       if(btn){
@@ -2928,9 +2936,11 @@ function renderShipments(){
           const cr=row?.querySelector('.cr-sel');
           const noteVal=ni?ni.value:'';
           const crVal=cr?cr.value:'';
-          saveCR(sid,crVal,noteVal);
-          markCt(sid);
-          btn.textContent='✅';setTimeout(()=>btn.textContent='💾',1500);
+          const ok=await saveCR(sid,crVal,noteVal);
+          if(ok){
+            markCt(sid);
+            btn.textContent='✅';setTimeout(()=>btn.textContent='💾',1500);
+          }
         } else if(a==='del'){
           if(!confirm('هل تريد حذف هذا الطرد؟'))return;
           deleteShipment(sid);
@@ -2938,12 +2948,12 @@ function renderShipments(){
         else if(a==='return') openRetModal(sid);
       } else if(row&&!e.target.closest('input')&&!e.target.closest('textarea')&&!e.target.closest('select')) openDetail(row.dataset.sid);
     });
-    tbody.addEventListener('change',e=>{
+    tbody.addEventListener('change',async e=>{
       const cr=e.target.closest('.cr-sel');
       if(cr){
         const row=cr.closest('.pr');
         const ni=row?.querySelector('.note-inp');
-        saveCR(cr.dataset.sid,cr.value,ni?ni.value:getCR(cr.dataset.sid).note);
+        await saveCR(cr.dataset.sid,cr.value,ni?ni.value:getCR(cr.dataset.sid).note);
       }
     });
   }
@@ -5700,9 +5710,12 @@ function apiSave(sid,btn){
   const row=btn.closest('.pr');
   const ni=row?.querySelector('.anote-inp');
   const cr=row?.querySelector('.acr-sel');
-  saveCR(s.tracking_code,cr?cr.value:'',ni?ni.value:'');
-  btn.textContent='✅';setTimeout(()=>btn.textContent='💾',1500);
-  toast('✅ تم الحفظ','s');
+  Promise.resolve(saveCR(s.tracking_code,cr?cr.value:'',ni?ni.value:'')).then(ok=>{
+    if(ok){
+      btn.textContent='✅';setTimeout(()=>btn.textContent='💾',1500);
+      toast('✅ تم الحفظ','s');
+    }
+  });
 }
 function apiMove(sid){
   const s=apiShipments.find(x=>x.id===sid);
