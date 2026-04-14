@@ -1254,7 +1254,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
 
     <!-- Filters — isolated from API tab -->
     <div class="fbar" style="margin-top:4px">
-      <input class="fi fi-grow" id="j-q" type="text" placeholder="🔍 بحث بالمتجر، الكود..." oninput="scheduleJanzourRender()" style="min-width:160px">
+      <input class="fi fi-grow" id="j-q" type="text" placeholder="🔍 بحث بالمتجر، الكود..." oninput="renderJanzour()" style="min-width:160px">
       <select class="fi" id="j-fcap" onchange="renderJanzour()" style="min-width:130px"><option value="">👤 كل المناديب</option></select>
       <select class="fi" id="j-fbranch" onchange="renderJanzour()" style="min-width:120px"><option value="">🏢 كل الفروع</option></select>
       <select class="fi" id="j-fgov" onchange="renderJanzour()" style="min-width:120px"><option value="">🗺️ كل المحافظات</option></select>
@@ -2371,7 +2371,6 @@ async function loadAll(){
     shipments=sh; drivers_db=dr; branches=br; regions=re; stores=st;
     contacted=new Set(ct.map(r=>r.shipment_id));
     contact_results_db=crdb||[];
-    invalidateCrLookup();
     if(tpls.length) WA_TPLS=tpls;
     cfg.forEach(r=>{
       if(r.key==='critDays')CFG.critDays=parseInt(r.value)||15;
@@ -2463,30 +2462,20 @@ function stBadge(s){
 function ctBadge(id){return contacted.has(String(id))?'<span class="badge b-grn">✅ تم</span>':'<span class="badge b-dim">⏳</span>';}
 function normPhone(p){if(!p)return'';p=String(p).replace(/[^0-9]/g,'');if(p.startsWith('0')&&p.length===10)p='218'+p.slice(1);return p;}
 
-// Contact Result helpers — Map cache (O(1))؛ كان find() يكرر آلاف المرات مع كل صف جنزور
-let __crLookupMap=null;
-function invalidateCrLookup(){__crLookupMap=null;}
-function buildCrLookupMap(){
-  const m=new Map();
-  for(const r of contact_results_db||[]){
-    const v={result:String(r.result||''),note:String(r.note||''),by:String(r.updated_by||'')};
-    const sid=String(r.shipment_id||'').trim();
-    const tc=String(r.tracking_code||'').trim();
-    if(sid)m.set(sid,v);
-    if(tc){m.set(tc,v);m.set('api_'+tc,v);}
-  }
-  return m;
-}
+// Contact Result helpers — Supabase first, localStorage fallback
 function getCR(sid,trackingCode=''){
-  if(!__crLookupMap)__crLookupMap=buildCrLookupMap();
   const sidStr=String(sid??'').trim();
   const tcStr=String(trackingCode||'').trim();
   const sidAsCode=sidStr.startsWith('api_')?sidStr.slice(4):sidStr;
-  const db=__crLookupMap.get(sidStr)
-    ||(tcStr?__crLookupMap.get(tcStr):null)
-    ||(sidAsCode?__crLookupMap.get(sidAsCode):null)
-    ||(sidStr&&__crLookupMap.get('api_'+sidStr));
-  if(db)return{result:db.result,note:db.note,by:db.by};
+  const db=contact_results_db.find(r=>{
+    const rid=String(r.shipment_id||'').trim();
+    const rtc=String(r.tracking_code||'').trim();
+    return (sidStr&&rid===sidStr)
+      || (sidStr&&rtc===sidStr)
+      || (sidAsCode&&rtc===sidAsCode)
+      || (tcStr&&rtc===tcStr);
+  });
+  if(db)return{result:db.result||'',note:db.note||'',by:db.updated_by||''};
   const local=localStorage.getItem('cr_'+sidStr)||localStorage.getItem('cr_'+sidAsCode)||'';
   const note=localStorage.getItem('note_'+sidStr)||localStorage.getItem('note_'+sidAsCode)||'';
   return{result:local,note:note,by:''};
@@ -2536,7 +2525,6 @@ async function saveCR(sid,result,note){
     // Update local cache
     if(existing){existing.shipment_id=sidStr;existing.tracking_code=trackingCode;existing.result=result;existing.note=note;existing.updated_by=userName;}
     else contact_results_db.push(payload);
-    invalidateCrLookup();
     if(s)writeCrSnap(sid,s);
     return true;
   }catch(e){console.error('saveCR exception:',e);toast('خطأ في الحفظ','e');return false;}
@@ -4030,7 +4018,6 @@ async function clearAllContactResults(){
     if(!r.ok){const e=await r.text();throw new Error(e);}
     const deleted=await r.json();
     contact_results_db=[];
-    invalidateCrLookup();
     toast(`🗑️ تم حذف ${Array.isArray(deleted)?deleted.length:0} سجل تتبع`,'w');
     renderStaff();renderShipments();
   }catch(e){toast('خطأ: '+e.message,'e');}
@@ -4276,7 +4263,7 @@ async function renderStaff(){
   // Always refresh contact results from Supabase so manager sees latest employee activity
   try{
     const fresh=await sb('contact_results','GET',null,'?select=*&order=shipment_id');
-    if(Array.isArray(fresh)){contact_results_db=fresh;invalidateCrLookup();}
+    if(Array.isArray(fresh))contact_results_db=fresh;
   }catch(e){console.warn('CR refresh failed:',e);}
 
   const users=Object.entries(USERS);
@@ -4783,11 +4770,6 @@ let JANZOUR_STORES_SEED=[
 let janzourStoreSet=new Set(); // lowercase+trimmed for fast O(1) lookup
 let janzourShipments=[];       // filtered subset — NEVER modified by API tab
 let janzourSeg='all', janzourCrSeg='all', jPage=1, jPER=25;
-let __janzourDdLen=-1,__janzourRenderTimer=null,__janzourLargePageWarned=false;
-function scheduleJanzourRender(){
-  clearTimeout(__janzourRenderTimer);
-  __janzourRenderTimer=setTimeout(()=>{__janzourRenderTimer=null;renderJanzour();},300);
-}
 let jperfLastBr='', jperfLastCap=''; // حفظ اختيار بطاقات أداء الفرع/المندوب
 let sfPage=1; // Staff shipments table page
 
@@ -4838,7 +4820,6 @@ function buildJanzourSet(){
     : [];
   janzourStoreSet=new Set(fromDb);
   rebuildJanzourShipments();
-  __janzourDdLen=-1;
 }
 function rebuildJanzourShipments(){
   janzourShipments=apiShipments.filter(s=>{
@@ -5183,7 +5164,6 @@ function renderAPIShipments(){
   }
 
   const myName=CU?.name||'';
-  const empList=Object.values(USERS).filter(u=>u.status!=='inactive').map(u=>u.name);
   let list=[...apiShipments];
 
   // Segment filter
@@ -5237,15 +5217,16 @@ function renderAPIShipments(){
   tbody.innerHTML=page.map((s,idx)=>{
     const sid=String(s.id).replace(/'/g,"\\'").replace(/"/g,'&quot;');
     const tc=String(s.tracking_code||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    const crData=getCR(s.id,s.tracking_code);
+    const crData=getCR(s.tracking_code);
     const note=(crData.note||'').replace(/"/g,'&quot;');
     const cResult=crData.result;
     const ph=s.customer_phone&&s.customer_phone!=='—'&&s.customer_phone!=='undefined';
     const assignedTo=assignments[s.tracking_code]||'';
     const assignColor=assignedTo?'var(--grn)':'var(--dim)';
     const isManager=CU?.role==='manager';
+    const empList=Object.values(USERS).filter(u=>u.status!=='inactive').map(u=>u.name);
     const assignCell=isManager
-      ?`<select onclick="event.stopPropagation()" onchange="setAssignedTo('${tc}',this.value)" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 5px;font-size:10px;color:${assignColor};font-family:var(--font);min-width:80px"><option value="">—</option>${empList.map(e=>`<option value="${String(e).replace(/"/g,'&quot;')}" ${e===assignedTo?'selected':''}>${e}</option>`).join('')}</select>`
+      ?`<select onclick="event.stopPropagation()" onchange="setAssignedTo('${tc}',this.value)" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 5px;font-size:10px;color:${assignColor};font-family:var(--font);min-width:80px"><option value="">—</option>${empList.map(e=>`<option value="${e}" ${e===assignedTo?'selected':''}>${e}</option>`).join('')}</select>`
       :`<span style="font-size:11px;color:${assignColor}">${assignedTo||'—'}</span>`;
     return`<tr class="pr" data-asid="${sid}" onclick="openAPIDetail('${sid}')" style="cursor:pointer;${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}${assignedTo===myName?';border-right:2px solid var(--pur)':''}">
       <td onclick="event.stopPropagation()"><input type="checkbox" data-asid="${sid}" ${apiChecked.has(sid)?'checked':''} onchange="this.checked?apiChecked.add(this.dataset.asid):apiChecked.delete(this.dataset.asid)" style="width:16px;height:16px"></td>
@@ -5317,21 +5298,13 @@ function resetJanzourFilters(){
   setJSeg('all');
 }
 
-function updateJanzourKPIs(){
-  const arr=janzourShipments;
-  const total=arr.length;
-  let crit=0,warn=0,ok=0,driver=0,comp=0;
-  const storeNames=new Set();
-  for(const s of arr){
-    const c=cls(s.delay_days);
-    if(c==='critical')crit++;
-    else if(c==='warning')warn++;
-    else if(c==='ok')ok++;
-    if(s.status==='with_driver')driver++;
-    if(s.status==='in_company')comp++;
-    const cn=s.client_name;if(cn)storeNames.add(cn);
-  }
-  const activeStores=storeNames.size;
+function updateJanzourKPIs(list){
+  const total=janzourShipments.length;
+  const crit=janzourShipments.filter(s=>cls(s.delay_days)==='critical').length;
+  const warn=janzourShipments.filter(s=>cls(s.delay_days)==='warning').length;
+  const driver=janzourShipments.filter(s=>s.status==='with_driver').length;
+  const comp=janzourShipments.filter(s=>s.status==='in_company').length;
+  const activeStores=new Set(janzourShipments.map(s=>s.client_name)).size;
   const el=id=>document.getElementById(id);
   if(el('jk-total'))el('jk-total').textContent=total;
   if(el('jk-crit'))el('jk-crit').textContent=crit;
@@ -5345,7 +5318,7 @@ function updateJanzourKPIs(){
   if(el('jsn-all'))el('jsn-all').textContent=total;
   if(el('jsn-crit'))el('jsn-crit').textContent=crit;
   if(el('jsn-warn'))el('jsn-warn').textContent=warn;
-  if(el('jsn-ok'))el('jsn-ok').textContent=ok;
+  if(el('jsn-ok'))el('jsn-ok').textContent=janzourShipments.filter(s=>cls(s.delay_days)==='ok').length;
   if(el('jsn-driver'))el('jsn-driver').textContent=driver;
   if(el('jsn-comp'))el('jsn-comp').textContent=comp;
 }
@@ -5370,17 +5343,18 @@ function renderJanzour(){
     if(prev&&arr.includes(prev))el.value=prev;
     else el.selectedIndex=0;
   }
-  if(__janzourDdLen!==janzourShipments.length){
-    __janzourDdLen=janzourShipments.length;
-    rebuildSelect('j-fcap','👤 كل المناديب',new Set(janzourShipments.map(s=>s.captain).filter(Boolean)));
-    rebuildSelect('j-fbranch','🏢 كل الفروع',new Set(janzourShipments.map(s=>s.current_branch).filter(Boolean)));
-    rebuildSelect('j-fgov','🗺️ كل المحافظات',new Set(janzourShipments.map(s=>s.government).filter(Boolean)));
-  }
+  rebuildSelect('j-fcap','👤 كل المناديب',new Set(janzourShipments.map(s=>s.captain).filter(Boolean)));
+  rebuildSelect('j-fbranch','🏢 كل الفروع',new Set(janzourShipments.map(s=>s.current_branch).filter(Boolean)));
+  rebuildSelect('j-fgov','🗺️ كل المحافظات',new Set(janzourShipments.map(s=>s.government).filter(Boolean)));
 
   const fcap=(document.getElementById('j-fcap')?.value||'').trim();
   const fbranch=(document.getElementById('j-fbranch')?.value||'').trim();
   const fgov=(document.getElementById('j-fgov')?.value||'').trim();
   const fstatus=(document.getElementById('j-fstatus')?.value||'').trim();
+
+  function jCrResult(sid){
+    try{return getCR(sid).result||'';}catch(e){return'';}
+  }
 
   // ── INDEPENDENT FILTER — does NOT affect apiShipments ──
   let list=[...janzourShipments];
@@ -5397,17 +5371,12 @@ function renderJanzour(){
   if(fstatus)list=list.filter(s=>s.status===fstatus);
   if(q)list=list.filter(s=>`${s.client_name} ${s.tracking_code} ${s.captain} ${s.current_branch} ${s.government}`.toLowerCase().includes(q));
 
-  // ── CR filter (نتيجة المتابعة) — getCR مرة واحدة لكل صف للفلترة والعرض ──
-  const jCrMap=new Map();
-  for(const s of list){
-    const cr=getCR(s.id,s.tracking_code);
-    jCrMap.set(s.id,{result:cr.result||'',note:cr.note||''});
-  }
-  if(janzourCrSeg==='none')list=list.filter(s=>!jCrMap.get(s.id)?.result);
-  else if(janzourCrSeg==='solved')list=list.filter(s=>jCrMap.get(s.id)?.result==='solved');
-  else if(janzourCrSeg==='contacted')list=list.filter(s=>jCrMap.get(s.id)?.result==='contacted');
-  else if(janzourCrSeg==='no_answer')list=list.filter(s=>jCrMap.get(s.id)?.result==='no_answer');
-  else if(janzourCrSeg==='pending')list=list.filter(s=>jCrMap.get(s.id)?.result==='pending');
+  // ── CR filter ──
+  if(janzourCrSeg==='none')list=list.filter(s=>!jCrResult(s.id));
+  else if(janzourCrSeg==='solved')list=list.filter(s=>jCrResult(s.id)==='solved');
+  else if(janzourCrSeg==='contacted')list=list.filter(s=>jCrResult(s.id)==='contacted');
+  else if(janzourCrSeg==='no_answer')list=list.filter(s=>jCrResult(s.id)==='no_answer');
+  else if(janzourCrSeg==='pending')list=list.filter(s=>jCrResult(s.id)==='pending');
 
   list.sort((a,b)=>(Number(b.delay_days)||0)-(Number(a.delay_days)||0));
 
@@ -5430,7 +5399,7 @@ function renderJanzour(){
     tbody.innerHTML=page.map((s,i)=>{
       const ph=s.customer_phone&&s.customer_phone!=='—'&&s.customer_phone!=='undefined';
       const waBtn=ph?`<button class="btn btn-wa btn-sm" onclick="apiWA('${s.id}','receiver')" style="font-size:10px;padding:3px 6px">📱</button>`:'';
-      const crData=jCrMap.get(s.id)||{result:'',note:''};
+      const crData=getCR(s.id,s.tracking_code);
       const crColor=crData.result==='solved'?'var(--grn)':crData.result==='contacted'?'var(--blu)':crData.result==='no_answer'?'var(--red)':crData.result==='pending'?'var(--gold)':'';
       const sid=s.id.replace(/'/g,"\\'");
       return`<tr class="pr" style="${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}">
@@ -5465,7 +5434,7 @@ function renderJanzour(){
     page.forEach((s,i)=>{
       const sel=document.getElementById('jcr-'+i);
       if(sel){
-        const cr=jCrMap.get(s.id)||{result:''};
+        const cr=getCR(s.id,s.tracking_code);
         sel.value=cr.result||'';
         const c=cr.result==='solved'?'var(--grn)':cr.result==='contacted'?'var(--blu)':cr.result==='no_answer'?'var(--red)':cr.result==='pending'?'var(--gold)':'';
         sel.style.color=c;
@@ -5537,11 +5506,7 @@ function buildAPIPgn(total,totalP){
 }
 
 function changeAPIPerPage(val){aPER=parseInt(val)||25;aPage=1;renderAPIShipments();}
-function changeJanzourPerPage(val){
-  jPER=parseInt(val)||25;jPage=1;
-  if(jPER>300&&!__janzourLargePageWarned){__janzourLargePageWarned=true;toast('عرض أكثر من 300 صف قد يبطئ المتصفح — استخدم فلاتر أو صفحات أصغر إن لزم','w');}
-  renderJanzour();
-}
+function changeJanzourPerPage(val){jPER=parseInt(val)||25;jPage=1;renderJanzour();}
 
 // Global onclick handlers for API shipment buttons
 function openAPIDetail(sid){
