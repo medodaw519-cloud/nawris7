@@ -2463,13 +2463,6 @@ function stBadge(s){
 }
 function ctBadge(id){return contacted.has(String(id))?'<span class="badge b-grn">✅ تم</span>':'<span class="badge b-dim">⏳</span>';}
 function normPhone(p){if(!p)return'';p=String(p).replace(/[^0-9]/g,'');if(p.startsWith('0')&&p.length===10)p='218'+p.slice(1);return p;}
-function normalizeTrackingKey(v){
-  let s=String(v||'').trim();
-  if(!s)return '';
-  if(s.startsWith('api_'))s=s.slice(4);
-  s=s.replace(/\s+/g,' ').trim();
-  return s.toUpperCase();
-}
 
 // Contact Result helpers — Map cache (O(1))؛ كان find() يكرر آلاف المرات مع كل صف جنزور
 let __crLookupMap=null;
@@ -2479,10 +2472,8 @@ function buildCrLookupMap(){
   for(const r of contact_results_db||[]){
     const v={result:String(r.result||''),note:String(r.note||''),by:String(r.updated_by||'')};
     const sid=String(r.shipment_id||'').trim();
-    const tc=normalizeTrackingKey(r.tracking_code);
-    const sidAsKey=normalizeTrackingKey(sid);
+    const tc=String(r.tracking_code||'').trim();
     if(sid)m.set(sid,v);
-    if(sidAsKey)m.set(sidAsKey,v);
     if(tc){m.set(tc,v);m.set('api_'+tc,v);}
   }
   return m;
@@ -2490,15 +2481,11 @@ function buildCrLookupMap(){
 function getCR(sid,trackingCode=''){
   if(!__crLookupMap)__crLookupMap=buildCrLookupMap();
   const sidStr=String(sid??'').trim();
-  const tcStr=normalizeTrackingKey(trackingCode);
+  const tcStr=String(trackingCode||'').trim();
   const sidAsCode=sidStr.startsWith('api_')?sidStr.slice(4):sidStr;
-  const sidAsKey=normalizeTrackingKey(sidStr);
-  const sidCodeKey=normalizeTrackingKey(sidAsCode);
   const db=__crLookupMap.get(sidStr)
-    ||(sidAsKey?__crLookupMap.get(sidAsKey):null)
     ||(tcStr?__crLookupMap.get(tcStr):null)
     ||(sidAsCode?__crLookupMap.get(sidAsCode):null)
-    ||(sidCodeKey?__crLookupMap.get(sidCodeKey):null)
     ||(sidStr&&__crLookupMap.get('api_'+sidStr));
   if(db)return{result:db.result,note:db.note,by:db.by};
   const local=localStorage.getItem('cr_'+sidStr)||localStorage.getItem('cr_'+sidAsCode)||'';
@@ -2507,18 +2494,15 @@ function getCR(sid,trackingCode=''){
 }
 async function saveCR(sid,result,note){
   const sidStr=String(sid??'').trim();
-  const sidKey=normalizeTrackingKey(sidStr);
   const s=shipments.find(x=>String(x.id)===sidStr||String(x.tracking_code||'')===sidStr)
          ||apiShipments.find(x=>String(x.id)===sidStr||String(x.tracking_code||'')===sidStr);
-  const trackingCode=normalizeTrackingKey(String(s?.tracking_code|| (sidStr.startsWith('api_')?sidStr.slice(4):sidStr) ||'').trim());
+  const trackingCode=String(s?.tracking_code|| (sidStr.startsWith('api_')?sidStr.slice(4):sidStr) ||'').trim();
   const userName=CU?.name||'—';
   const payload={shipment_id:sidStr,tracking_code:trackingCode,result:result||'',note:note||'',updated_by:userName};
   try{
     // Find existing by shipment_id OR tracking_code so same parcel stays one row across days/imports
     const existing=contact_results_db.find(r=>
-      String(r.shipment_id||'')===sidStr
-      || (sidKey&&normalizeTrackingKey(r.shipment_id)===sidKey)
-      || (trackingCode&&normalizeTrackingKey(r.tracking_code)===trackingCode)
+      String(r.shipment_id||'')===sidStr || (trackingCode&&String(r.tracking_code||'')===trackingCode)
     );
     let r;
     if(existing){
@@ -4303,7 +4287,7 @@ async function renderStaff(){
   let totalFollowed=0,totalSolved=0,totalContacted=0,totalNoAnswer=0,totalPending=0,totalNone=0;
   const uniqueCR={};
   contact_results_db.forEach(r=>{
-    const key=normalizeTrackingKey(r.tracking_code||r.shipment_id||'');
+    const key=String(r.tracking_code||r.shipment_id||'').trim();
     if(!key)return;
     uniqueCR[key]=r;
   });
