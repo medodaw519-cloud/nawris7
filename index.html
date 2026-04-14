@@ -2429,26 +2429,38 @@ function normPhone(p){if(!p)return'';p=String(p).replace(/[^0-9]/g,'');if(p.star
 
 // Contact Result helpers — Supabase first, localStorage fallback
 function getCR(sid){
-  const db=contact_results_db.find(r=>String(r.shipment_id)===String(sid));
+  const sidStr=String(sid||'').trim();
+  const sidAsCode=sidStr.startsWith('api_')?sidStr.slice(4):sidStr;
+  const db=contact_results_db.find(r=>
+    String(r.shipment_id||'')===sidStr
+    || String(r.tracking_code||'')===sidStr
+    || (sidAsCode&&String(r.tracking_code||'')===sidAsCode)
+  );
   if(db)return{result:db.result||'',note:db.note||'',by:db.updated_by||''};
-  const local=localStorage.getItem('cr_'+sid)||'';
-  return{result:local,note:localStorage.getItem('note_'+sid)||'',by:''};
+  const local=localStorage.getItem('cr_'+sidStr)||localStorage.getItem('cr_'+sidAsCode)||'';
+  return{result:local,note:localStorage.getItem('note_'+sidStr)||localStorage.getItem('note_'+sidAsCode)||'',by:''};
 }
 async function saveCR(sid,result,note){
   const s=shipments.find(x=>String(x.id)===String(sid))
          ||apiShipments.find(x=>String(x.id)===String(sid));
   const userName=CU?.name||'—';
-  const payload={shipment_id:String(sid),tracking_code:s?.tracking_code||'',result:result||'',note:note||'',updated_by:userName};
+  const sidStr=String(sid||'').trim();
+  const sidAsCode=sidStr.startsWith('api_')?sidStr.slice(4):sidStr;
+  const trackingCode=String(s?.tracking_code||sidAsCode||'').trim();
+  const payload={shipment_id:sidStr,tracking_code:trackingCode,result:result||'',note:note||'',updated_by:userName};
   try{
-    // Check local cache first to decide INSERT vs UPDATE
-    const existing=contact_results_db.find(r=>String(r.shipment_id)===String(sid));
+    // Find existing by shipment_id OR tracking_code to keep same parcel in one row
+    const existing=contact_results_db.find(r=>
+      String(r.shipment_id||'')===sidStr
+      || (trackingCode&&String(r.tracking_code||'')===trackingCode)
+    );
     let r;
     if(existing){
-      // Record exists → PATCH (UPDATE) by shipment_id
-      r=await fetch(`${SB}/rest/v1/contact_results?shipment_id=eq.${encodeURIComponent(String(sid))}`,{
+      // Record exists → PATCH by id (most reliable)
+      r=await fetch(`${SB}/rest/v1/contact_results?id=eq.${encodeURIComponent(String(existing.id||''))}`,{
         method:'PATCH',
         headers:{...H,'Prefer':'return=minimal'},
-        body:JSON.stringify({result:result||'',note:note||'',updated_by:userName})
+        body:JSON.stringify({shipment_id:sidStr,tracking_code:trackingCode,result:result||'',note:note||'',updated_by:userName})
       });
     } else {
       // No record yet → try INSERT, fallback to PATCH if duplicate
@@ -2461,10 +2473,10 @@ async function saveCR(sid,result,note){
       if(!r.ok){
         const errTxt=await r.text();
         if(errTxt.includes('23505')||errTxt.includes('duplic')){
-          r=await fetch(`${SB}/rest/v1/contact_results?shipment_id=eq.${encodeURIComponent(String(sid))}`,{
+          r=await fetch(`${SB}/rest/v1/contact_results?tracking_code=eq.${encodeURIComponent(trackingCode)}`,{
             method:'PATCH',
             headers:{...H,'Prefer':'return=minimal'},
-            body:JSON.stringify({result:result||'',note:note||'',updated_by:userName})
+            body:JSON.stringify({shipment_id:sidStr,tracking_code:trackingCode,result:result||'',note:note||'',updated_by:userName})
           });
         } else {
           toast('خطأ في حفظ النتيجة: '+errTxt.substring(0,60),'e');return false;
@@ -2473,8 +2485,16 @@ async function saveCR(sid,result,note){
     }
     if(!r.ok){const e=await r.text();toast('خطأ في حفظ النتيجة: '+e.substring(0,60),'e');return false;}
     // Update local cache
-    if(existing){existing.result=result;existing.note=note;existing.updated_by=userName;}
+    if(existing){existing.shipment_id=sidStr;existing.tracking_code=trackingCode;existing.result=result;existing.note=note;existing.updated_by=userName;}
     else contact_results_db.push(payload);
+    try{
+      localStorage.setItem('cr_'+sidStr,String(result||''));
+      localStorage.setItem('note_'+sidStr,String(note||''));
+      if(trackingCode){
+        localStorage.setItem('cr_'+trackingCode,String(result||''));
+        localStorage.setItem('note_'+trackingCode,String(note||''));
+      }
+    }catch(_){}
     if(s)writeCrSnap(sid,s);
     return true;
   }catch(e){console.error('saveCR exception:',e);toast('خطأ في الحفظ','e');return false;}
@@ -2820,7 +2840,7 @@ function renderShipments(){
   }).join('');
   if(!tbody._del){
     tbody._del=true;
-    tbody.addEventListener('click',e=>{
+    tbody.addEventListener('click',async e=>{
       const btn=e.target.closest('[data-a]');
       const row=e.target.closest('.pr');
       if(btn){
@@ -2836,9 +2856,11 @@ function renderShipments(){
           const cr=row?.querySelector('.cr-sel');
           const noteVal=ni?ni.value:'';
           const crVal=cr?cr.value:'';
-          saveCR(sid,crVal,noteVal);
-          markCt(sid);
-          btn.textContent='✅';setTimeout(()=>btn.textContent='💾',1500);
+          const ok=await saveCR(sid,crVal,noteVal);
+          if(ok){
+            markCt(sid);
+            btn.textContent='✅';setTimeout(()=>btn.textContent='💾',1500);
+          }
         } else if(a==='del'){
           if(!confirm('هل تريد حذف هذا الطرد؟'))return;
           deleteShipment(sid);
@@ -2846,12 +2868,12 @@ function renderShipments(){
         else if(a==='return') openRetModal(sid);
       } else if(row&&!e.target.closest('input')&&!e.target.closest('textarea')&&!e.target.closest('select')) openDetail(row.dataset.sid);
     });
-    tbody.addEventListener('change',e=>{
+    tbody.addEventListener('change',async e=>{
       const cr=e.target.closest('.cr-sel');
       if(cr){
         const row=cr.closest('.pr');
         const ni=row?.querySelector('.note-inp');
-        saveCR(cr.dataset.sid,cr.value,ni?ni.value:getCR(cr.dataset.sid).note);
+        await saveCR(cr.dataset.sid,cr.value,ni?ni.value:getCR(cr.dataset.sid).note);
       }
     });
   }
@@ -5134,12 +5156,12 @@ function renderAPIShipments(){
   // Change event for contact result selects (use delegation on tbody, only once)
   if(!tbody._adel){
     tbody._adel=true;
-    tbody.addEventListener('change',e=>{
+    tbody.addEventListener('change',async e=>{
       const cr=e.target.closest('.acr-sel');
       if(cr){
         const row=cr.closest('.pr');
         const ni=row?.querySelector('.anote-inp');
-        saveCR(cr.dataset.code,cr.value,ni?ni.value:'');
+        await saveCR(cr.dataset.code,cr.value,ni?ni.value:'');
       }
     });
   }
@@ -5499,15 +5521,17 @@ function apiWAManager(sid,mgrPhone,mgrName){
   openWAUrl(ph,msg);
   toast('🚨 تم تبليغ مدير الفرع','e');
 }
-function apiSave(sid,btn){
+async function apiSave(sid,btn){
   const s=apiShipments.find(x=>x.id===sid);
   if(!s){toast('لم يتم العثور على الطرد','e');return;}
   const row=btn.closest('.pr');
   const ni=row?.querySelector('.anote-inp');
   const cr=row?.querySelector('.acr-sel');
-  saveCR(s.tracking_code,cr?cr.value:'',ni?ni.value:'');
-  btn.textContent='✅';setTimeout(()=>btn.textContent='💾',1500);
-  toast('✅ تم الحفظ','s');
+  const ok=await saveCR(s.tracking_code,cr?cr.value:'',ni?ni.value:'');
+  if(ok){
+    btn.textContent='✅';setTimeout(()=>btn.textContent='💾',1500);
+    toast('✅ تم الحفظ','s');
+  }
 }
 function apiMove(sid){
   const s=apiShipments.find(x=>x.id===sid);
