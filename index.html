@@ -1500,6 +1500,10 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <div class="ctitle" style="margin-bottom:0">📋 جدول الطرود الكاملة</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="badge b-grn" id="sf-cnt">0 طرد</span>
+          <div style="display:flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--rim);padding:4px 8px;border-radius:10px">
+            <span style="font-size:11px;color:var(--mute)">📅 التاريخ</span>
+            <input class="fi" id="sf-log-date" type="date" onchange="handleStaffDateChange()" style="font-size:11px;min-width:140px;padding:4px 8px">
+          </div>
           <select class="fi" id="sf-fsrc" onchange="renderStaffShipments()" style="font-size:11px;min-width:110px">
             <option value="">كل المصادر</option>
             <option value="API">📡 طرود API</option>
@@ -1576,6 +1580,24 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div id="staff-assign-stats"></div>
     </div>
 
+  </div>
+  <div id="staff-log-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2300;display:none;align-items:center;justify-content:center;padding:14px">
+    <div style="width:min(760px,100%);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--rim);border-radius:16px;box-shadow:0 16px 44px rgba(0,0,0,.45)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--rim);gap:10px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:15px;font-weight:800">🧾 سجل متابعة الطرد</div>
+          <div id="staff-log-modal-sub" style="font-size:11px;color:var(--mute);margin-top:2px">—</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input class="fi" id="staff-log-modal-date" type="date" onchange="reloadCurrentPackageLogs()" style="font-size:11px;min-width:140px;padding:4px 8px">
+          <button class="btn btn-ghost btn-sm" onclick="closeStaffLogModal()">✕ إغلاق</button>
+        </div>
+      </div>
+      <div id="staff-log-modal-body" style="padding:14px;overflow:auto;max-height:64vh"></div>
+      <div id="staff-log-modal-footer" style="display:none;padding:10px 14px;border-top:1px solid var(--rim)">
+        <button class="btn btn-ghost btn-sm" id="staff-log-load-more-btn" onclick="loadMorePackageLogs()">⬇️ تحميل المزيد</button>
+      </div>
+    </div>
   </div>
 
   <!-- ══ MASTER DATA ══ -->
@@ -1983,6 +2005,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
 const SB = 'https://kdlcoqcwqlxawejxfjss.supabase.co';
 const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkbGNvcWN3cWx4YXdlanhmanNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MzU0NzIsImV4cCI6MjA5MDIxMTQ3Mn0.rlxHDrJagHk8EiPsdVPy62bDicPXhwjZn0g6cdVQkv0';
 const H = {'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
+const LOG_API_BASE = 'api';
 
 /** إعدادات عمولات جنزور (وحدة أساسية + نسب + وزن تسليم/مرتجع) — تُحفظ محلياً وتُزامن مع Supabase عند التعديل */
 let CommissionCfg = { unitBase: 100, repPercent: 5, branchPercent: 2, ratioMin: 0.25, ratioMax: 1 };
@@ -2062,6 +2085,7 @@ let returns_data=[], transfers_data=[], contacted=new Set(), checked=new Set();
 let seg='all', sPage=1, masterSeg='regions', meTable='', meRecord=null, alphaFilter='';
 let PER=25;
 let autoFetchTimer=null;
+let staffLogState={packageId:'',trackingCode:'',storeName:'',all:[],shown:5};
 let CFG={critDays:3,warnDays:2,discount:50,company:'النورس للشحن',mgrPhone:''};
 let WA_TPLS=[
   {id:'reminder',name:'تذكير بالتسليم',tag:'عام',body:'السلام عليكم {اسم} 👋\nتذكير من {شركة}\n\nلديك {طرود} طرد متأخر\nأعلى تأخير: {أيام} يوم\n\n📦 أكواد الطرود:\n{أكواد}\n\n⚠️ يرجى اتخاذ إجراء فوري\nشكراً'},
@@ -2267,6 +2291,10 @@ async function startApp(){
     }
   }
   await loadAll();
+  const staffDateInput=document.getElementById('sf-log-date');
+  if(staffDateInput&&!staffDateInput.value)staffDateInput.value=getTodayISO();
+  const modalDateInput=document.getElementById('staff-log-modal-date');
+  if(modalDateInput&&!modalDateInput.value)modalDateInput.value=getTodayISO();
   gTab('home');
   loadStatusCfg();
   loadCustomStatuses();
@@ -2496,9 +2524,165 @@ async function saveCR(sid,result,note){
       }
     }catch(_){}
     if(s)writeCrSnap(sid,s);
+    await logPackageAction({
+      packageId:trackingCode||sidStr,
+      actionType:'follow_up_update',
+      status:result||'none'
+    });
     return true;
   }catch(e){console.error('saveCR exception:',e);toast('خطأ في الحفظ','e');return false;}
 }
+function getTodayISO(){
+  const d=new Date();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function getSelectedStaffDate(){
+  const main=document.getElementById('sf-log-date');
+  return (main?.value||'').trim()||getTodayISO();
+}
+function getStatusMeta(status){
+  const map={
+    solved:{label:'✅ تم الحل',icon:'✅',color:'var(--grn)'},
+    contacted:{label:'📞 تم التواصل',icon:'📞',color:'var(--blu)'},
+    no_answer:{label:'📵 لا يرد',icon:'📵',color:'var(--red)'},
+    pending:{label:'⏳ قيد المتابعة',icon:'⏳',color:'var(--gold)'},
+    none:{label:'⬜ بدون متابعة',icon:'⬜',color:'var(--mute)'}
+  };
+  return map[status]||{label:status||'—',icon:'📝',color:'var(--pale)'};
+}
+async function logPackageAction({packageId,actionType,status}){
+  try{
+    const payload={package_id:String(packageId||'').replace(/^api_/i,''),action_type:actionType||'update',status:status||''};
+    const r=await fetch(`${LOG_API_BASE}/log_action.php`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    if(!r.ok){
+      if(r.status===400)console.warn('log_action 400');
+      else if(r.status===500)console.warn('log_action 500');
+      else console.warn('log_action failed:',r.status);
+    }
+  }catch(e){
+    console.warn('logPackageAction error:',e);
+  }
+}
+async function fetchPackageLogs(packageId,dateStr){
+  const u=new URL(`${LOG_API_BASE}/get_logs.php`,window.location.href);
+  u.searchParams.set('package_id',String(packageId||'').replace(/^api_/i,''));
+  u.searchParams.set('date',dateStr||getTodayISO());
+  try{
+    const r=await fetch(u.toString(),{method:'GET'});
+    if(r.status===400){
+      const t=await r.text();
+      throw new Error('400: '+t);
+    }
+    if(r.status===500){
+      const t=await r.text();
+      throw new Error('500: '+t);
+    }
+    if(r.status!==200){
+      const t=await r.text();
+      throw new Error(`${r.status}: ${t}`);
+    }
+    const data=await r.json();
+    return Array.isArray(data.logs)?data.logs:[];
+  }catch(e){
+    toast('خطأ في جلب سجل المتابعة: '+String(e.message||e).slice(0,120),'e');
+    return [];
+  }
+}
+function renderPackageLogsTimeline(){
+  const body=document.getElementById('staff-log-modal-body');
+  const footer=document.getElementById('staff-log-modal-footer');
+  const btn=document.getElementById('staff-log-load-more-btn');
+  if(!body||!footer||!btn)return;
+  const logs=staffLogState.all||[];
+  const visible=logs.slice(0,staffLogState.shown);
+  if(!logs.length){
+    body.innerHTML='<div style="text-align:center;padding:28px;color:var(--mute)">لا يوجد نشاط لهذا الطرد في التاريخ المحدد</div>';
+    footer.style.display='none';
+    return;
+  }
+  body.innerHTML=visible.map((l,idx)=>{
+    const meta=getStatusMeta(l.status||'');
+    const at=(l.created_at||'').replace('T',' ').slice(11,19)||'—';
+    const isLast=idx===visible.length-1;
+    return `<div style="display:flex;gap:10px;position:relative;padding-bottom:${isLast?'4px':'14px'}">
+      <div style="width:22px;display:flex;justify-content:center;position:relative">
+        <span style="width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:var(--bg4);border:1px solid var(--rim);font-size:12px">${meta.icon}</span>
+        ${!isLast?'<span style="position:absolute;top:24px;width:2px;height:calc(100% - 12px);background:var(--rim)"></span>':''}
+      </div>
+      <div style="flex:1;min-width:0;background:var(--bg3);border:1px solid var(--rim);border-radius:10px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;flex-wrap:wrap">
+          <strong style="font-size:12px">${l.employee_name||'—'}</strong>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--dim)">${at}</span>
+        </div>
+        <div style="margin-top:5px;font-size:12px;color:${meta.color};font-weight:700">${meta.label}</div>
+        <div style="margin-top:4px;font-size:11px;color:var(--mute)">الإجراء: ${l.action_type||'update'}</div>
+      </div>
+    </div>`;
+  }).join('');
+  const hasMore=logs.length>visible.length;
+  footer.style.display=hasMore?'block':'none';
+  btn.textContent=hasMore?'⬇️ تحميل المزيد':'—';
+}
+async function openPackageLogsModal(packageId,trackingCode,storeName){
+  const modal=document.getElementById('staff-log-modal');
+  const sub=document.getElementById('staff-log-modal-sub');
+  const dateMain=document.getElementById('sf-log-date');
+  const dateModal=document.getElementById('staff-log-modal-date');
+  if(!modal||!sub||!dateModal)return;
+  const dateValue=(dateMain?.value||'').trim()||getTodayISO();
+  dateModal.value=dateValue;
+  staffLogState={packageId:String(packageId||''),trackingCode:String(trackingCode||''),storeName:String(storeName||''),all:[],shown:5};
+  sub.textContent=`${staffLogState.trackingCode||staffLogState.packageId} • ${staffLogState.storeName||'—'} • ${dateValue}`;
+  document.getElementById('staff-log-modal-body').innerHTML='<div style="text-align:center;padding:26px;color:var(--mute)">⏳ جارٍ تحميل السجل...</div>';
+  modal.style.display='flex';
+  const logs=await fetchPackageLogs(staffLogState.packageId,dateValue);
+  staffLogState.all=logs;
+  staffLogState.shown=5;
+  renderPackageLogsTimeline();
+}
+function closeStaffLogModal(){
+  const modal=document.getElementById('staff-log-modal');
+  if(modal)modal.style.display='none';
+}
+function loadMorePackageLogs(){
+  staffLogState.shown+=5;
+  renderPackageLogsTimeline();
+}
+async function reloadCurrentPackageLogs(){
+  if(!staffLogState.packageId)return;
+  const modalDate=document.getElementById('staff-log-modal-date');
+  const dateValue=(modalDate?.value||'').trim()||getTodayISO();
+  const sub=document.getElementById('staff-log-modal-sub');
+  if(sub)sub.textContent=`${staffLogState.trackingCode||staffLogState.packageId} • ${staffLogState.storeName||'—'} • ${dateValue}`;
+  const logs=await fetchPackageLogs(staffLogState.packageId,dateValue);
+  staffLogState.all=logs;
+  staffLogState.shown=5;
+  renderPackageLogsTimeline();
+}
+async function handleStaffDateChange(){
+  const dateInput=document.getElementById('sf-log-date');
+  if(dateInput&&!dateInput.value)dateInput.value=getTodayISO();
+  await renderStaff();
+  if(document.getElementById('staff-log-modal')?.style.display==='flex'){
+    const modalDate=document.getElementById('staff-log-modal-date');
+    if(modalDate)modalDate.value=getSelectedStaffDate();
+    await reloadCurrentPackageLogs();
+  }
+}
+document.addEventListener('click',e=>{
+  if(e.target&&e.target.id==='staff-log-modal')closeStaffLogModal();
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.getElementById('staff-log-modal')?.style.display==='flex'){
+    closeStaffLogModal();
+  }
+});
 /** Snapshot shipment labels to localStorage so staff rows still show names after the parcel drops off the API list */
 function writeCrSnap(sid,s){
   if(!s)return;
@@ -4561,7 +4745,10 @@ function renderStaffShipments(){
       ?`<span title="متابعة محفوظة لطرد لم يُعد يظهر في قائمة API الحالية — لذلك قد لا يظهر اسم المتجر" style="font-size:9px;background:var(--gd);color:var(--gold);border:1px solid var(--gb);border-radius:4px;padding:1px 5px;cursor:help">أرشيف</span>`
       :`<span style="font-size:9px;background:var(--bld);color:var(--blu);border:1px solid var(--blb);border-radius:4px;padding:1px 5px">DB</span>`;
     const rowBg=s.crResult?'':`style="opacity:.85"`;
-    return`<tr ${rowBg}>
+    const sidAttr=String(s._sid||'').replace(/"/g,'&quot;');
+    const codeAttr=String(s.code||'').replace(/"/g,'&quot;');
+    const storeAttr=String(s.store||'').replace(/"/g,'&quot;');
+    return`<tr ${rowBg} class="sf-log-row" data-package-id="${sidAttr}" data-package-code="${codeAttr}" data-package-store="${storeAttr}" style="cursor:pointer">
       <td style="color:var(--dim);font-size:11px">${start+i+1}</td>
       <td style="max-width:170px"><div style="font-weight:700;font-size:12px;line-height:1.3">${s.store}</div><div style="margin-top:2px">${srcBadge}</div></td>
       <td class="code-cell" style="font-size:11px">${backofficeOrderLinkHtml(s.code)}</td>
@@ -4574,6 +4761,16 @@ function renderStaffShipments(){
       <td class="mob-hide"><span style="font-size:11px;font-weight:600;color:${s.crBy&&s.crBy!=='—'?'var(--grn)':'var(--dim)'}">${s.crBy&&s.crBy!=='—'?'👤 '+s.crBy:'—'}</span></td>
     </tr>`;
   }).join('');
+  tbody.querySelectorAll('.sf-log-row').forEach(row=>{
+    row.addEventListener('click',ev=>{
+      const t=ev.target;
+      if(t&&t.closest&&t.closest('a'))return;
+      const pid=row.getAttribute('data-package-id')||'';
+      const pcode=row.getAttribute('data-package-code')||'';
+      const pstore=row.getAttribute('data-package-store')||'';
+      openPackageLogsModal(pid,pcode,pstore);
+    });
+  });
 }
 
 // ══════════════════════════════════════════
