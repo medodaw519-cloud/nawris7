@@ -3516,8 +3516,6 @@ function processSt(file,table){
       const ws=wb.Sheets[wb.SheetNames[0]];
       // Try normal parse first
       let rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-      // Raw matrix fallback (for odd headers / single-column sheets)
-      const rawRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       // If first row looks like a title (has very few keys or contains 🕊️), skip header rows
       if(rows.length>0){
         const firstKey=Object.keys(rows[0])[0]||'';
@@ -3527,12 +3525,12 @@ function processSt(file,table){
           rows=XLSX.utils.sheet_to_json(ws,{defval:'',range:2});
         }
       }
-      await uploadStatic(rows,table,rawRows,ws);
+      await uploadStatic(rows,table);
     }
     catch(err){toast('خطأ في قراءة الملف: '+err.message,'e');}
   };r.readAsBinaryString(file);
 }
-async function uploadStatic(rows,table,rawRows=[],ws=null){
+async function uploadStatic(rows,table){
   const el=document.getElementById('sts-'+table);
   if(el)el.textContent='⏳ جارٍ الرفع...';
   const fm={
@@ -3543,19 +3541,10 @@ async function uploadStatic(rows,table,rawRows=[],ws=null){
   };
   const fields=fm[table]||{};
   function getF(row,keys){for(const k of keys){const v=row[k];if(v!==undefined&&String(v).trim()!=='')return String(v).trim();}return null;}
-  function getFirstCell(row){
-    const vals=Object.values(row||{});
-    for(const v of vals){
-      if(v!==undefined&&v!==null&&String(v).trim()!=='')return String(v).trim();
-    }
-    return null;
-  }
   const data=[];const seen=new Set();
   for(const r of rows){
     const nameKeys=fields.name||['name','الاسم'];
-    let name=getF(r,nameKeys);
-    /* stores file can be one unnamed/odd header column -> fallback to first non-empty cell */
-    if(!name&&table==='stores')name=getFirstCell(r);
+    const name=getF(r,nameKeys);
     if(!name||seen.has(name))continue;
     seen.add(name);
     const rec={name};
@@ -3566,45 +3555,7 @@ async function uploadStatic(rows,table,rawRows=[],ws=null){
     }
     data.push(rec);
   }
-  // Fallback #2: read first column directly from raw matrix
-  if(!data.length&&table==='stores'&&Array.isArray(rawRows)&&rawRows.length){
-    for(const row of rawRows){
-      if(!Array.isArray(row)||!row.length)continue;
-      const first=row.find(v=>v!==undefined&&v!==null&&String(v).trim()!=='');
-      const v=String(first??'').trim();
-      if(!v)continue;
-      if(/^(اسم\s*المتجر|name)$/i.test(v))continue;
-      const cleaned=v.replace(/^\uFEFF/,'').trim();
-      if(!cleaned||seen.has(cleaned))continue;
-      seen.add(cleaned);
-      data.push({name:cleaned});
-    }
-  }
-  // Fallback #3: direct worksheet scan (handles odd formatting/merged cells)
-  if(!data.length&&table==='stores'&&ws&&ws['!ref']){
-    try{
-      const range=XLSX.utils.decode_range(ws['!ref']);
-      for(let R=range.s.r;R<=range.e.r;R++){
-        let picked='';
-        for(let C=range.s.c;C<=range.e.c;C++){
-          const addr=XLSX.utils.encode_cell({r:R,c:C});
-          const cell=ws[addr];
-          const txt=String(cell?.w??cell?.v??'').trim();
-          if(txt){picked=txt;break;}
-        }
-        if(!picked)continue;
-        if(/^(اسم\s*المتجر|name)$/i.test(picked))continue;
-        const cleaned=picked.replace(/^\uFEFF/,'').replace(/\s+/g,' ').trim();
-        if(!cleaned||seen.has(cleaned))continue;
-        seen.add(cleaned);
-        data.push({name:cleaned});
-      }
-    }catch(_){}
-  }
-  if(!data.length){
-    if(el)el.innerHTML=`<span style="color:var(--red)">❌ لا بيانات صالحة — rows:${rows?.length||0} / raw:${rawRows?.length||0}</span>`;
-    return;
-  }
+  if(!data.length){if(el)el.innerHTML='<span style="color:var(--red)">❌ لا بيانات صالحة — تأكد من أعمدة الملف</span>';return;}
   try{
     // Use simple INSERT with on_conflict=name (needs unique on name)
     // Try upsert first, fallback to plain insert
