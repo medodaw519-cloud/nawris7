@@ -2552,6 +2552,28 @@ function getStatusMeta(status){
   };
   return map[status]||{label:status||'—',icon:'📝',color:'var(--pale)'};
 }
+function buildPackageLogsFallback(packageId,dateStr){
+  const target=String(packageId||'').replace(/^api_/i,'').trim();
+  if(!target)return [];
+  const wantedDate=(dateStr||getTodayISO()).trim();
+  const rows=(Array.isArray(contact_results_db)?contact_results_db:[]).filter(r=>{
+    const sid=String(r.shipment_id||'').replace(/^api_/i,'').trim();
+    const tc=String(r.tracking_code||'').replace(/^api_/i,'').trim();
+    if(sid!==target&&tc!==target)return false;
+    const ts=String(r.updated_at||r.created_at||'').trim();
+    if(!ts)return true; // if table doesn't expose timestamp, keep the row
+    return ts.slice(0,10)===wantedDate;
+  });
+  return rows.map(r=>({
+    id:r.id||null,
+    package_id:target,
+    employee_id:null,
+    employee_name:r.updated_by||'—',
+    action_type:'follow_up_update',
+    status:r.result||'none',
+    created_at:r.updated_at||r.created_at||new Date().toISOString()
+  })).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')));
+}
 async function logPackageAction({packageId,actionType,status}){
   try{
     const payload={package_id:String(packageId||'').replace(/^api_/i,''),action_type:actionType||'update',status:status||''};
@@ -2580,22 +2602,21 @@ async function fetchPackageLogs(packageId,dateStr){
     try{
       data=raw?JSON.parse(raw):{};
     }catch(_){
-      const snippet=String(raw||'').replace(/\s+/g,' ').trim().slice(0,120);
-      throw new Error(`استجابة غير صالحة من الخادم (${r.status})${snippet?`: ${snippet}`:''}`);
+      // API endpoint may be unavailable on static hosting; fallback to local CR rows
+      return buildPackageLogsFallback(packageId,dateStr);
     }
     if(r.status===400){
-      throw new Error(`400: ${data?.message||'طلب غير صالح'}`);
+      return buildPackageLogsFallback(packageId,dateStr);
     }
     if(r.status===500){
-      throw new Error(`500: ${data?.message||'خطأ داخلي في الخادم'}`);
+      return buildPackageLogsFallback(packageId,dateStr);
     }
     if(r.status!==200){
-      throw new Error(`${r.status}: ${data?.message||'خطأ غير متوقع'}`);
+      return buildPackageLogsFallback(packageId,dateStr);
     }
     return Array.isArray(data.logs)?data.logs:[];
   }catch(e){
-    toast('خطأ في جلب سجل المتابعة: '+String(e.message||e).slice(0,120),'e');
-    return [];
+    return buildPackageLogsFallback(packageId,dateStr);
   }
 }
 function renderPackageLogsTimeline(){
@@ -4366,23 +4387,44 @@ async function renderStaff(){
 
   const users=Object.entries(USERS);
   const crLabels={solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
+  const assignments=getAPIAssignments();
 
-  // Count from Supabase contact_results_db
+  // Rebuild live package rows (API + DB only) so performance is tied to table packages
+  const apiRows=apiShipments.map(s=>{
+    const cr=getCR(s.id);
+    return{
+      code:s.tracking_code||'—',
+      crResult:cr.result||'',
+      crNote:cr.note||'',
+      crBy:cr.by||(assignments[s.tracking_code]||'')||'—',
+      src:'API'
+    };
+  });
+  const dbRows=shipments.map(s=>{
+    const cr=getCR(s.id);
+    return{
+      code:s.tracking_code||'—',
+      crResult:cr.result||'',
+      crNote:cr.note||'',
+      crBy:cr.by||'—',
+      src:'DB'
+    };
+  });
+  const packageRows=[...apiRows,...dbRows];
+
+  // Count only from current package table rows
   let totalFollowed=0,totalSolved=0,totalContacted=0,totalNoAnswer=0,totalPending=0,totalNone=0;
-  const crIndex={};
-  contact_results_db.forEach(r=>{crIndex[r.shipment_id]=r;});
-  shipments.forEach(s=>{
-    const cr=crIndex[s.id];
-    if(cr&&cr.result){
+  packageRows.forEach(p=>{
+    if(p.crResult){
       totalFollowed++;
-      if(cr.result==='solved')totalSolved++;
-      else if(cr.result==='contacted')totalContacted++;
-      else if(cr.result==='no_answer')totalNoAnswer++;
-      else if(cr.result==='pending')totalPending++;
+      if(p.crResult==='solved')totalSolved++;
+      else if(p.crResult==='contacted')totalContacted++;
+      else if(p.crResult==='no_answer')totalNoAnswer++;
+      else if(p.crResult==='pending')totalPending++;
     } else totalNone++;
   });
 
-  const combinedTotal=shipments.length+apiShipments.length;
+  const combinedTotal=packageRows.length;
 
   // KPIs
   document.getElementById('staff-kpis').innerHTML=`
@@ -4397,18 +4439,18 @@ async function renderStaff(){
   // Per-employee stats + shipment list
   const empStats={};
   users.forEach(([uname,u])=>{empStats[u.name]={name:u.name,role:u.role,followed:0,solved:0,contacted:0,no_answer:0,pending:0,items:[]};});
-  contact_results_db.forEach(r=>{
-    if(!r.updated_by)return;
-    const name=r.updated_by;
+  packageRows.forEach(r=>{
+    if(!r.crBy||r.crBy==='—')return;
+    const name=r.crBy;
     if(!empStats[name])empStats[name]={name,role:'employee',followed:0,solved:0,contacted:0,no_answer:0,pending:0,items:[]};
-    if(r.result){
+    if(r.crResult){
       empStats[name].followed++;
-      if(r.result==='solved')empStats[name].solved++;
-      else if(r.result==='contacted')empStats[name].contacted++;
-      else if(r.result==='no_answer')empStats[name].no_answer++;
-      else if(r.result==='pending')empStats[name].pending++;
+      if(r.crResult==='solved')empStats[name].solved++;
+      else if(r.crResult==='contacted')empStats[name].contacted++;
+      else if(r.crResult==='no_answer')empStats[name].no_answer++;
+      else if(r.crResult==='pending')empStats[name].pending++;
     }
-    empStats[name].items.push({code:r.tracking_code||'—',result:r.result||'',note:r.note||'',sid:r.shipment_id});
+    empStats[name].items.push({code:r.code||'—',result:r.crResult||'',note:r.crNote||'',src:r.src||''});
   });
 
   const rows=Object.values(empStats).sort((a,b)=>b.followed-a.followed);
@@ -4417,12 +4459,15 @@ async function renderStaff(){
     tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:36px;color:var(--mute)">لا توجد بيانات متابعة بعد — اضغط 💾 لحفظ نتائج التواصل</td></tr>';
   } else {
     tbody.innerHTML=rows.filter(r=>r.followed>0).map(r=>{
-      const pct=shipments.length?Math.round(r.followed/shipments.length*100):0;
+      const pct=combinedTotal?Math.round(r.followed/combinedTotal*100):0;
       const pctColor=pct>70?'var(--grn)':pct>30?'var(--gold)':'var(--red)';
       const codesHtml=r.items.slice(0,50).map(it=>{
         const rc=it.result==='solved'?'var(--grn)':it.result==='contacted'?'var(--blu)':it.result==='no_answer'?'var(--red)':it.result==='pending'?'var(--gold)':'var(--mute)';
         const noteStr=it.note?` — <span style="color:var(--pale)">${it.note}</span>`:'';
-        return`<div style="font-size:10px;padding:2px 0;border-bottom:1px solid var(--rim)"><span style="font-size:10px">${backofficeOrderLinkHtml(it.code)}</span> <span style="color:${rc}">${crLabels[it.result]||'—'}</span>${noteStr}</div>`;
+        const srcBadge=it.src==='API'
+          ?'<span style="font-size:9px;color:var(--pur);margin-inline:4px">[API]</span>'
+          :'<span style="font-size:9px;color:var(--blu);margin-inline:4px">[DB]</span>';
+        return`<div style="font-size:10px;padding:2px 0;border-bottom:1px solid var(--rim)">${srcBadge}<span style="font-size:10px">${backofficeOrderLinkHtml(it.code)}</span> <span style="color:${rc}">${crLabels[it.result]||'—'}</span>${noteStr}</div>`;
       }).join('');
       return`<tr>
         <td><strong>${r.name}</strong><div style="font-size:10px;color:var(--dim)">${r.role==='manager'?'مدير':'موظف'}</div></td>
@@ -4582,25 +4627,15 @@ function renderStaffShipments(){
     return String(sid);
   }
 
-  let crCanonForEmp=null;
-  if(fEmp){
-    const w=normEmpName(fEmp);
-    crCanonForEmp=new Set();
-    for(const r of contact_results_db){
-      if(normEmpName(r.updated_by)!==w)continue;
-      crCanonForEmp.add(canonSid(r.shipment_id));
-    }
-  }
-
   // Rebuild employee dropdown (always, so new employees appear)
   const empSel=document.getElementById('sf-femp');
   if(empSel){
     const prev=empSel.value;
     while(empSel.options.length>1)empSel.remove(1);
     const names=new Set();
-    contact_results_db.forEach(r=>{if(r.updated_by&&r.updated_by!=='—')names.add(r.updated_by);});
+    shipments.forEach(s=>{const cr=getCR(s.id);if(cr.by&&cr.by!=='—')names.add(cr.by);});
+    apiShipments.forEach(s=>{const cr=getCR(s.id);const e=cr.by||(assignments[s.tracking_code]||'');if(e&&e!=='—')names.add(e);});
     Object.values(USERS).forEach(u=>names.add(u.name));
-    apiShipments.forEach(s=>{const e=assignments[s.tracking_code];if(e)names.add(e);});
     names.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;empSel.appendChild(o);});
     if(prev)empSel.value=prev;
   }
@@ -4647,54 +4682,6 @@ function renderStaffShipments(){
 
   // Merge both sources — API first, then Supabase
   let list=[...apiList,...sbList];
-  const sidSeen=new Set(list.map(r=>canonSid(r._sid)));
-
-  // ── Add contact_results rows for this employee not in current API/DB lists
-  if(fEmp){
-    const want=normEmpName(fEmp);
-    contact_results_db.forEach(cr=>{
-      if(normEmpName(cr.updated_by)!==want)return;
-      const sid=String(cr.shipment_id);
-      const canon=canonSid(sid);
-      if(sidSeen.has(canon))return;
-      sidSeen.add(canon);
-      const apiS=findApiFast(sid);
-      if(apiS){
-        const cr2=getCR(sid)||getCR(apiS.id);
-        const emp=cr2.by||(assignments[apiS.tracking_code]||want);
-        list.push({
-          _sid:String(apiS.id),code:apiS.tracking_code||'—',store:apiS.client_name||'—',captain:apiS.captain||'—',
-          branch:apiS.current_branch||'—',status:apiS.status||'—',delay:apiS.delay_days??0,
-          crResult:cr2.result||'',crNote:cr2.note||'',crBy:emp||want,src:'API'
-        });
-      } else {
-        const sbS=shipById.get(sid)||shipById.get(canon);
-        if(sbS){
-          const cr2=getCR(sid)||getCR(sbS.id);
-          list.push({
-            _sid:String(sbS.id),code:sbS.tracking_code||'—',store:sbS.customer_name||sbS.client_name||'—',captain:sbS.driver_name||'—',
-            branch:sbS.branch_name||'—',status:sbS.status||'—',delay:sbS.delay_days??0,
-            crResult:cr2.result||'',crNote:cr2.note||'',crBy:cr2.by||want,src:'DB'
-          });
-        } else {
-          const codeShow=(cr.tracking_code||'').trim()||sid.replace(/^api_/i,'')||'—';
-          const lsSnap=readCrSnapMulti(sid,canon,codeShow);
-          const snapStore=(String(cr.client_name||'').trim()||String(cr.store_name||'').trim()||(lsSnap&&lsSnap.client_name)||'').trim();
-          const snapCap=(String(cr.captain_name||'').trim()||(lsSnap&&lsSnap.captain_name)||'').trim();
-          const snapBr=(String(cr.branch_name||'').trim()||(lsSnap&&lsSnap.branch_name)||'').trim();
-          list.push({
-            _sid:canon,
-            code:codeShow,
-            store:snapStore||'تعذّر عرض اسم المتجر — الطرد لم يُعد ضمن آخر جلب من API',
-            captain:snapCap||'—',
-            branch:snapBr||'—',
-            status:'—',delay:0,
-            crResult:cr.result||'',crNote:cr.note||'',crBy:cr.updated_by||want,src:'أرشيف'
-          });
-        }
-      }
-    });
-  }
 
   // Filter
   if(fSrc){list=list.filter(s=>s.src===fSrc);}
@@ -4703,7 +4690,7 @@ function renderStaffShipments(){
   else if(fRes){list=list.filter(s=>s.crResult===fRes);}
   if(fEmp){
     const w=normEmpName(fEmp);
-    list=list.filter(s=>normEmpName(s.crBy)===w||(crCanonForEmp&&crCanonForEmp.has(canonSid(s._sid))));
+    list=list.filter(s=>normEmpName(s.crBy)===w);
   }
 
   const total=list.length;
