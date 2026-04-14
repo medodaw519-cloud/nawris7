@@ -2579,6 +2579,21 @@ async function saveCR(sid,result,note){
     return true;
   }catch(e){console.error('saveCR exception:',e);toast('خطأ في الحفظ','e');return false;}
 }
+let __crAutoTimers=new Map();
+function scheduleCRAutoSave(key,fn,delay=700){
+  if(__crAutoTimers.has(key))clearTimeout(__crAutoTimers.get(key));
+  const t=setTimeout(async()=>{
+    __crAutoTimers.delete(key);
+    try{await fn();}catch(_){}
+  },delay);
+  __crAutoTimers.set(key,t);
+}
+function paintAutoSaved(el,ok){
+  if(!el)return;
+  const old=el.style.borderColor;
+  el.style.borderColor=ok?'var(--grn)':'var(--red)';
+  setTimeout(()=>{el.style.borderColor=old||'';},700);
+}
 /** Snapshot shipment labels to localStorage so staff rows still show names after the parcel drops off the API list */
 function writeCrSnap(sid,s){
   if(!s)return;
@@ -2953,8 +2968,21 @@ function renderShipments(){
       if(cr){
         const row=cr.closest('.pr');
         const ni=row?.querySelector('.note-inp');
-        await saveCR(cr.dataset.sid,cr.value,ni?ni.value:getCR(cr.dataset.sid).note);
+        const ok=await saveCR(cr.dataset.sid,cr.value,ni?ni.value:getCR(cr.dataset.sid).note);
+        paintAutoSaved(cr,ok);
       }
+    });
+    tbody.addEventListener('input',e=>{
+      const ni=e.target.closest('.note-inp');
+      if(!ni)return;
+      const row=ni.closest('.pr');
+      const cr=row?.querySelector('.cr-sel');
+      const sid=ni.dataset.sid||row?.dataset?.sid||'';
+      if(!sid)return;
+      scheduleCRAutoSave('s:'+sid,async()=>{
+        const ok=await saveCR(sid,cr?cr.value:'',ni.value||'');
+        paintAutoSaved(ni,ok);
+      });
     });
   }
   buildPgn(total,totalP);
@@ -5318,13 +5346,26 @@ function renderAPIShipments(){
   // Change event for contact result selects (use delegation on tbody, only once)
   if(!tbody._adel){
     tbody._adel=true;
-    tbody.addEventListener('change',e=>{
+    tbody.addEventListener('change',async e=>{
       const cr=e.target.closest('.acr-sel');
       if(cr){
         const row=cr.closest('.pr');
         const ni=row?.querySelector('.anote-inp');
-        saveCR(cr.dataset.code,cr.value,ni?ni.value:'');
+        const ok=await saveCR(cr.dataset.code,cr.value,ni?ni.value:'');
+        paintAutoSaved(cr,ok);
       }
+    });
+    tbody.addEventListener('input',e=>{
+      const ni=e.target.closest('.anote-inp');
+      if(!ni)return;
+      const row=ni.closest('.pr');
+      const cr=row?.querySelector('.acr-sel');
+      const key=ni.dataset.code||ni.dataset.asid||'';
+      if(!key)return;
+      scheduleCRAutoSave('a:'+key,async()=>{
+        const ok=await saveCR(key,cr?cr.value:'',ni.value||'');
+        paintAutoSaved(ni,ok);
+      });
     });
   }
 
@@ -5486,12 +5527,12 @@ function renderJanzour(){
         <td style="cursor:pointer" onclick="openAPIDetail('${sid}')">${stBadge(s.status)}</td>
         <td style="cursor:pointer" onclick="openAPIDetail('${sid}')">${dBadge(s.delay_days)}</td>
         <td onclick="event.stopPropagation()" style="min-width:130px">
-          <select class="fi" id="jcr-${i}" style="font-size:11px;padding:3px 6px;min-width:128px;border-color:${crColor||'var(--rim)'};color:${crColor||'inherit'}" onchange="document.getElementById('jcr-${i}').style.color=this.value?'':'inherit'">
+          <select class="fi" id="jcr-${i}" style="font-size:11px;padding:3px 6px;min-width:128px;border-color:${crColor||'var(--rim)'};color:${crColor||'inherit'}" onchange="document.getElementById('jcr-${i}').style.color=this.value?'':'inherit';autoSaveJanzourCR('${sid}',${i});">
             ${crOpts}
           </select>
         </td>
         <td onclick="event.stopPropagation()" style="min-width:160px">
-          <select class="fi jnote-sel" id="jnote-${i}" style="font-size:11px;padding:3px 6px;min-width:140px;width:100%;max-width:280px">
+          <select class="fi jnote-sel" id="jnote-${i}" style="font-size:11px;padding:3px 6px;min-width:140px;width:100%;max-width:280px" onchange="autoSaveJanzourCR('${sid}',${i})">
             ${janzourNoteSelectHtml(crData.note||'')}
           </select>
         </td>
@@ -5565,6 +5606,18 @@ async function saveJanzourCR(sid,rowIdx){
     const c=result==='solved'?'var(--grn)':result==='contacted'?'var(--blu)':result==='no_answer'?'var(--red)':result==='pending'?'var(--gold)':'';
     sel.style.color=c;sel.style.borderColor=c||'var(--rim)';
   }
+}
+function autoSaveJanzourCR(sid,rowIdx){
+  const sel=document.getElementById('jcr-'+rowIdx);
+  const noteEl=document.getElementById('jnote-'+rowIdx);
+  const result=sel?sel.value:'';
+  const note=noteEl?noteEl.value.trim():'';
+  if(!note)return; // keep mandatory note rule
+  scheduleCRAutoSave('j:'+sid,async()=>{
+    const ok=await saveCR(sid,result,note);
+    paintAutoSaved(sel,ok);
+    paintAutoSaved(noteEl,ok);
+  });
 }
 
 function buildAPIPgn(total,totalP){
