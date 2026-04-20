@@ -5805,6 +5805,7 @@ function renderJanzour(){
   // Rebuild filtered set in case stores were updated
   rebuildJanzourShipments();
   updateJanzourKPIs();
+  const assignments=getAPIAssignments();
 
   const q=(document.getElementById('j-q')?.value||'').toLowerCase().trim();
 
