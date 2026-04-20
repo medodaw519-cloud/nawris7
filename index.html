@@ -1279,10 +1279,10 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
     <div class="tw">
       <table>
         <thead><tr>
-          <th>#</th><th>المتجر / العميل</th><th>الكود</th>
-          <th>المندوب</th><th class="mob-hide">الفرع</th>
-          <th class="mob-hide">المحافظة</th><th>الحالة</th><th>التأخير</th>
-          <th>نتيجة المتابعة</th><th title="إلزامي قبل الحفظ">ماذا حدث في الطلب *</th>
+          <th>#</th><th onclick="setJSort('client_name')" style="cursor:pointer;user-select:none">المتجر / العميل <span id="j-sort-client_name">↕</span></th><th onclick="setJSort('tracking_code')" style="cursor:pointer;user-select:none">الكود <span id="j-sort-tracking_code">↕</span></th>
+          <th onclick="setJSort('captain')" style="cursor:pointer;user-select:none">المندوب <span id="j-sort-captain">↕</span></th><th class="mob-hide" onclick="setJSort('current_branch')" style="cursor:pointer;user-select:none">الفرع <span id="j-sort-current_branch">↕</span></th>
+          <th class="mob-hide" onclick="setJSort('government')" style="cursor:pointer;user-select:none">المحافظة <span id="j-sort-government">↕</span></th><th onclick="setJSort('status')" style="cursor:pointer;user-select:none">الحالة <span id="j-sort-status">↕</span></th><th onclick="setJSort('delay_days')" style="cursor:pointer;user-select:none">التأخير <span id="j-sort-delay_days">↓</span></th>
+          <th onclick="setJSort('cr_result')" style="cursor:pointer;user-select:none">نتيجة المتابعة <span id="j-sort-cr_result">↕</span></th><th title="إلزامي قبل الحفظ">ماذا حدث في الطلب *</th>
           <th title="تسجيل تسليم + تم الحل + مزامنة المؤشرات">تم التسليم</th><th>حفظ</th>
           <th>واتساب</th>
         </tr></thead>
@@ -5020,6 +5020,7 @@ let JANZOUR_STORES_SEED=[
 let janzourStoreSet=new Set(); // lowercase+trimmed for fast O(1) lookup
 let janzourShipments=[];       // filtered subset — NEVER modified by API tab
 let janzourSeg='all', janzourCrSeg='all', jPage=1, jPER=25;
+let jSortKey='delay_days', jSortDir='desc';
 let jperfLastBr='', jperfLastCap=''; // حفظ اختيار بطاقات أداء الفرع/المندوب
 let sfPage=1; // Staff shipments table page
 let sfSortKey='delay', sfSortDir='desc';
@@ -5591,6 +5592,20 @@ function resetJanzourFilters(){
   document.querySelectorAll('[data-jcrseg]').forEach(el=>el.classList.toggle('on',el.dataset.jcrseg==='all'));
   setJSeg('all');
 }
+function setJSort(key){
+  if(jSortKey===key)jSortDir=jSortDir==='asc'?'desc':'asc';
+  else{jSortKey=key;jSortDir='asc';}
+  jPage=1;
+  renderJanzour();
+}
+function updateJSortHeaderIcons(){
+  const keys=['client_name','tracking_code','captain','current_branch','government','status','delay_days','cr_result'];
+  keys.forEach(k=>{
+    const el=document.getElementById('j-sort-'+k);
+    if(!el)return;
+    el.textContent=jSortKey===k?(jSortDir==='asc'?'↑':'↓'):'↕';
+  });
+}
 
 function updateJanzourKPIs(list){
   const total=janzourShipments.length;
@@ -5672,7 +5687,37 @@ function renderJanzour(){
   else if(janzourCrSeg==='no_answer')list=list.filter(s=>jCrResult(s.id)==='no_answer');
   else if(janzourCrSeg==='pending')list=list.filter(s=>jCrResult(s.id)==='pending');
 
-  list.sort((a,b)=>(Number(b.delay_days)||0)-(Number(a.delay_days)||0));
+  list.sort((a,b)=>{
+    const aCr=jCrResult(a.id);
+    const bCr=jCrResult(b.id);
+    const av=(()=>{
+      if(jSortKey==='delay_days')return Number(a.delay_days||0);
+      if(jSortKey==='client_name')return String(a.client_name||'');
+      if(jSortKey==='tracking_code')return String(a.tracking_code||'');
+      if(jSortKey==='captain')return String(a.captain||'');
+      if(jSortKey==='current_branch')return String(a.current_branch||'');
+      if(jSortKey==='government')return String(a.government||'');
+      if(jSortKey==='status')return String(a.status||'');
+      if(jSortKey==='cr_result')return String(aCr||'');
+      return Number(a.delay_days||0);
+    })();
+    const bv=(()=>{
+      if(jSortKey==='delay_days')return Number(b.delay_days||0);
+      if(jSortKey==='client_name')return String(b.client_name||'');
+      if(jSortKey==='tracking_code')return String(b.tracking_code||'');
+      if(jSortKey==='captain')return String(b.captain||'');
+      if(jSortKey==='current_branch')return String(b.current_branch||'');
+      if(jSortKey==='government')return String(b.government||'');
+      if(jSortKey==='status')return String(b.status||'');
+      if(jSortKey==='cr_result')return String(bCr||'');
+      return Number(b.delay_days||0);
+    })();
+    let cmp=0;
+    if(typeof av==='number'&&typeof bv==='number')cmp=av-bv;
+    else cmp=String(av).localeCompare(String(bv),'ar',{numeric:true,sensitivity:'base'});
+    return jSortDir==='asc'?cmp:-cmp;
+  });
+  updateJSortHeaderIcons();
 
   const per=Math.max(1,jPER||25);
   const total=list.length;
