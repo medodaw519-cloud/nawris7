@@ -4400,7 +4400,7 @@ async function renderStaff(){
   }catch(e){console.warn('CR refresh failed:',e);}
 
   const users=Object.entries(USERS);
-  const crLabels={solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
+  const crLabels={delivered:'✅ تم التسليم',solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
   const assignments=getAPIAssignments();
 
   // Rebuild live package rows (API + DB only) so performance is tied to table packages
@@ -4671,7 +4671,7 @@ function renderStaffShipments(){
     if(prev)empSel.value=prev;
   }
 
-  const crLabels={solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
+  const crLabels={delivered:'✅ تم التسليم',solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
   const statusLabels={with_driver:'مع المندوب',in_company:'في الشركة',delivered:'تم التسليم',returned:'مرتجع',partially_delivered:'تسليم جزئي',transferred:'محوّل',delayed:'متأخر'};
 
   // ── Source 1: API shipments ──
@@ -4758,7 +4758,7 @@ function renderStaffShipments(){
 
   tbody.innerHTML=page.map((s,i)=>{
     const clsC=s.delay>14?'var(--red)':s.delay>7?'var(--gold)':'var(--grn)';
-    const crColor=s.crResult==='solved'?'var(--grn)':s.crResult==='contacted'?'var(--blu)':s.crResult==='no_answer'?'var(--red)':s.crResult==='pending'?'var(--gold)':'var(--mute)';
+    const crColor=s.crResult==='delivered'?'var(--grn)':s.crResult==='solved'?'var(--grn)':s.crResult==='contacted'?'var(--blu)':s.crResult==='no_answer'?'var(--red)':s.crResult==='pending'?'var(--gold)':'var(--mute)';
     const statusLabel=statusLabels[s.status]||s.status;
     const stBadge=s.status==='with_driver'?'b-gold':s.status==='in_company'?'b-pur':s.status==='delivered'?'b-grn':s.status==='returned'?'b-red':'b-orn';
     const srcBadge=s.src==='API'
@@ -5508,7 +5508,7 @@ function renderJanzour(){
   const el=id=>document.getElementById(id);
   if(el('j-cnt'))el('j-cnt').textContent=total+' طرد';
 
-  const crOpts=`<option value="">— نتيجة —</option><option value="solved">✅ تم الحل</option><option value="contacted">📞 تم التواصل</option><option value="no_answer">📵 لا يرد</option><option value="pending">⏳ جاري المتابعة</option>`;
+  const crOpts=`<option value="">— نتيجة —</option><option value="delivered">✅ تم التسليم</option><option value="solved">✅ تم الحل</option><option value="contacted">📞 تم التواصل</option><option value="no_answer">📵 لا يرد</option><option value="pending">⏳ جاري المتابعة</option>`;
 
   const tbody=el('j-tbody');
   if(!page.length){
@@ -6113,6 +6113,9 @@ function resolveOutcomeFromCR(cr){
   if(!cr)return '';
   // Strict rule: CR data alone must not affect Janzour delivery rates.
   // Only explicit shipment status (delivered/returned) is counted.
+  const res=String(cr.result||'').trim();
+  if(res==='delivered')return 'delivered';
+  if(res==='returned')return 'returned';
   return '';
 }
 function getJanzourAnalyticsPool(){
@@ -6369,7 +6372,7 @@ async function janzourQuickDelivered(sid){
   s.status='delivered';
   s.raw_status='تم التسليم';
   try{localStorage.setItem('api_shipments',JSON.stringify(apiShipments));}catch(e){}
-  const ok=await saveCR(sid,'solved',NOTE);
+  const ok=await saveCR(sid,'delivered',NOTE);
   if(ok!==true){
     s.status=prev.status;
     s.raw_status=prev.raw;
