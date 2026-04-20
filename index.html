@@ -1076,11 +1076,21 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div style="border-top:1px solid var(--rim);padding-top:12px">
         <div style="font-size:12px;font-weight:700;color:var(--pale);margin-bottom:8px">✋ التعيين اليدوي (للمحددين في الجدول)</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <select class="fi" id="manual-assign-emp" style="min-width:160px">
+          <select class="fi" id="manual-assign-emp" style="min-width:160px" onchange="updateAssignLiveCounter()">
             <option value="">اختر موظف...</option>
           </select>
+          <span id="manual-assign-live" style="font-size:11px;color:var(--mute)">—</span>
           <button class="btn btn-gold btn-sm" onclick="assignSelected()">✅ تعيين المحددين</button>
           <button class="btn btn-ghost btn-sm" onclick="unassignSelected()">✕ إلغاء تعيين المحددين</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <select class="fi" id="assign-branch-filter" style="min-width:180px">
+            <option value="">كل الفروع (حسب الفلتر الحالي)</option>
+          </select>
+          <select class="fi" id="assign-branch-emp" style="min-width:160px">
+            <option value="">اختر موظف...</option>
+          </select>
+          <button class="btn btn-pur btn-sm" onclick="bulkAssignFilteredBranch()">🏢 تعيين كل الطرود المفلترة للفرع</button>
         </div>
       </div>
     </div>
@@ -1174,7 +1184,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <table>
           <thead>
           <tr>
-            <th><input type="checkbox" id="achk-all" onchange="toggleAllAPI(this)"></th>
+            <th><input type="checkbox" id="achk-all" onchange="toggleAllAPIFiltered(this.checked)"></th>
             <th class="mob-hide">#</th><th onclick="setAPISort('tracking_code')" style="cursor:pointer;user-select:none">الكود <span id="a-sort-tracking_code">↕</span></th><th class="mob-hide" onclick="setAPISort('assigned_to')" style="cursor:pointer;user-select:none">المسند إلى <span id="a-sort-assigned_to">↕</span></th><th onclick="setAPISort('client_name')" style="cursor:pointer;user-select:none">المتجر / العميل <span id="a-sort-client_name">↕</span></th><th class="mob-hide" onclick="setAPISort('receiver_name')" style="cursor:pointer;user-select:none">المستلم <span id="a-sort-receiver_name">↕</span></th><th class="mob-hide" onclick="setAPISort('customer_phone')" style="cursor:pointer;user-select:none">هاتف المستلم <span id="a-sort-customer_phone">↕</span></th>
             <th class="mob-hide" onclick="setAPISort('captain')" style="cursor:pointer;user-select:none">المندوب <span id="a-sort-captain">↕</span></th><th class="mob-hide" onclick="setAPISort('current_branch')" style="cursor:pointer;user-select:none">الفرع <span id="a-sort-current_branch">↕</span></th><th class="mob-hide" onclick="setAPISort('government')" style="cursor:pointer;user-select:none">المحافظة <span id="a-sort-government">↕</span></th><th class="mob-hide" onclick="setAPISort('area')" style="cursor:pointer;user-select:none">المنطقة <span id="a-sort-area">↕</span></th>
             <th onclick="setAPISort('status')" style="cursor:pointer;user-select:none">الحالة <span id="a-sort-status">↕</span></th><th onclick="setAPISort('delay_days')" style="cursor:pointer;user-select:none">التأخير <span id="a-sort-delay_days">↓</span></th><th class="mob-hide" onclick="setAPISort('cr_result')" style="cursor:pointer;user-select:none">نتيجة التواصل <span id="a-sort-cr_result">↕</span></th><th class="mob-hide" onclick="setAPISort('cr_note')" style="cursor:pointer;user-select:none">ملاحظة <span id="a-sort-cr_note">↕</span></th>
@@ -1274,19 +1284,38 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       المتاجر المرتبطة: <span id="j-store-count" style="color:var(--grn);font-weight:700">0</span> متجر من البيانات الثابتة
     </div>
     <p style="font-size:11px;color:var(--mute);margin:-4px 0 12px">📊 <strong>نسب ومعدلات التسليم</strong> (حسب المتجر والفرع والمندوب) متوفرة في تبويب <a href="#" onclick="gTab('janzour-rates');return false" style="color:var(--pur);font-weight:700">نسب ومعدلات جنزور</a>.</p>
+    <div class="card" style="margin-bottom:10px;border-right:3px solid var(--gold)">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select class="fi" id="j-assign-emp" onchange="updateJAssignLiveCounter()" style="min-width:170px">
+          <option value="">اختر موظف...</option>
+        </select>
+        <span id="j-assign-live" style="font-size:11px;color:var(--mute)">—</span>
+        <button class="btn btn-gold btn-sm" onclick="assignSelectedJanzour()">✅ تعيين المحددين</button>
+        <button class="btn btn-ghost btn-sm" onclick="unassignSelectedJanzour()">✕ إلغاء تعيين المحددين</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <select class="fi" id="j-assign-branch" style="min-width:170px">
+          <option value="">كل الفروع (حسب الفلتر)</option>
+        </select>
+        <select class="fi" id="j-assign-branch-emp" style="min-width:170px">
+          <option value="">اختر موظف...</option>
+        </select>
+        <button class="btn btn-pur btn-sm" onclick="bulkAssignFilteredJanzourBranch()">🏢 تعيين كل طرد الفرع</button>
+      </div>
+    </div>
 
     <!-- Table -->
     <div class="tw">
       <table>
         <thead><tr>
-          <th>#</th><th onclick="setJSort('client_name')" style="cursor:pointer;user-select:none">المتجر / العميل <span id="j-sort-client_name">↕</span></th><th onclick="setJSort('tracking_code')" style="cursor:pointer;user-select:none">الكود <span id="j-sort-tracking_code">↕</span></th>
-          <th onclick="setJSort('captain')" style="cursor:pointer;user-select:none">المندوب <span id="j-sort-captain">↕</span></th><th class="mob-hide" onclick="setJSort('current_branch')" style="cursor:pointer;user-select:none">الفرع <span id="j-sort-current_branch">↕</span></th>
+          <th><input type="checkbox" id="jchk-all" onchange="toggleAllJanzourFiltered(this.checked)"></th><th>#</th><th onclick="setJSort('client_name')" style="cursor:pointer;user-select:none">المتجر / العميل <span id="j-sort-client_name">↕</span></th><th onclick="setJSort('tracking_code')" style="cursor:pointer;user-select:none">الكود <span id="j-sort-tracking_code">↕</span></th>
+          <th onclick="setJSort('captain')" style="cursor:pointer;user-select:none">المندوب <span id="j-sort-captain">↕</span></th><th>المسند إلى</th><th class="mob-hide" onclick="setJSort('current_branch')" style="cursor:pointer;user-select:none">الفرع <span id="j-sort-current_branch">↕</span></th>
           <th class="mob-hide" onclick="setJSort('government')" style="cursor:pointer;user-select:none">المحافظة <span id="j-sort-government">↕</span></th><th onclick="setJSort('status')" style="cursor:pointer;user-select:none">الحالة <span id="j-sort-status">↕</span></th><th onclick="setJSort('delay_days')" style="cursor:pointer;user-select:none">التأخير <span id="j-sort-delay_days">↓</span></th>
           <th onclick="setJSort('cr_result')" style="cursor:pointer;user-select:none">نتيجة المتابعة <span id="j-sort-cr_result">↕</span></th><th title="إلزامي قبل الحفظ">ماذا حدث في الطلب *</th>
           <th title="تسجيل تسليم + تم الحل + مزامنة المؤشرات">تم التسليم</th><th>حفظ</th>
           <th>واتساب</th>
         </tr></thead>
-        <tbody id="j-tbody"><tr><td colspan="13" style="text-align:center;padding:32px;color:var(--mute)">اضغط "جلب الآن" في طرود API لتحميل البيانات</td></tr></tbody>
+        <tbody id="j-tbody"><tr><td colspan="15" style="text-align:center;padding:32px;color:var(--mute)">اضغط "جلب الآن" في طرود API لتحميل البيانات</td></tr></tbody>
       </table>
     </div>
     <div style="padding:10px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -5007,6 +5036,7 @@ function updateStatusFilters(){
 let apiShipments=[], apiSeg='all', aPage=1, aPER=25, apiChecked=new Set(), autoFetchTimer2=null;
 let apiFetchLog=[];
 let aSortKey='delay_days', aSortDir='desc';
+let apiFilteredData=[], apiFilteredIds=[], apiLastSelectedSid='';
 
 // ══════════════════════════════════════════
 // JANZOUR STORES — Isolated view
@@ -5021,6 +5051,7 @@ let janzourStoreSet=new Set(); // lowercase+trimmed for fast O(1) lookup
 let janzourShipments=[];       // filtered subset — NEVER modified by API tab
 let janzourSeg='all', janzourCrSeg='all', jPage=1, jPER=25;
 let jSortKey='delay_days', jSortDir='desc';
+let jChecked=new Set(), jFilteredData=[], jFilteredIds=[], jLastSelectedSid='';
 let jperfLastBr='', jperfLastCap=''; // حفظ اختيار بطاقات أداء الفرع/المندوب
 let sfPage=1; // Staff shipments table page
 let sfSortKey='delay', sfSortDir='desc';
@@ -5490,6 +5521,8 @@ function renderAPIShipments(){
     return aSortDir==='asc'?cmp:-cmp;
   });
   updateAPISortHeaderIcons();
+  apiFilteredData=list.slice();
+  apiFilteredIds=apiFilteredData.map(s=>String(s.id));
 
   const total=list.length,totalP=Math.max(1,Math.ceil(total/aPER));
   if(aPage>totalP)aPage=1;
@@ -5499,6 +5532,8 @@ function renderAPIShipments(){
   const tbody=document.getElementById('a-tbody');
   if(!page.length){
     tbody.innerHTML=`<tr><td colspan="18" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج — اضغط "جلب الآن" لجلب البيانات من API</td></tr>`;
+    const allEl=document.getElementById('achk-all');
+    if(allEl)allEl.checked=false;
     buildAPIPgn(total,totalP);
     return;
   }
@@ -5511,17 +5546,14 @@ function renderAPIShipments(){
     const cResult=crData.result;
     const ph=s.customer_phone&&s.customer_phone!=='—'&&s.customer_phone!=='undefined';
     const assignedTo=assignments[s.tracking_code]||'';
-    const assignColor=assignedTo?'var(--grn)':'var(--dim)';
-    const isManager=CU?.role==='manager';
-    const empList=Object.values(USERS).filter(u=>u.status!=='inactive').map(u=>u.name);
-    const assignCell=isManager
-      ?`<select onclick="event.stopPropagation()" onchange="setAssignedTo('${tc}',this.value)" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 5px;font-size:10px;color:${assignColor};font-family:var(--font);min-width:80px"><option value="">—</option>${empList.map(e=>`<option value="${e}" ${e===assignedTo?'selected':''}>${e}</option>`).join('')}</select>`
-      :`<span style="font-size:11px;color:${assignColor}">${assignedTo||'—'}</span>`;
-    return`<tr class="pr" data-asid="${sid}" onclick="openAPIDetail('${sid}')" style="cursor:pointer;${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}${assignedTo===myName?';border-right:2px solid var(--pur)':''}">
-      <td onclick="event.stopPropagation()"><input type="checkbox" data-asid="${sid}" ${apiChecked.has(sid)?'checked':''} onchange="this.checked?apiChecked.add(this.dataset.asid):apiChecked.delete(this.dataset.asid)" style="width:16px;height:16px"></td>
+    const assignCell=assignedTo
+      ?`<span class="badge b-grn" style="font-size:10px">${assignedTo}</span><button class="btn btn-ghost btn-sm" data-a="undo-assign" data-code="${tc}" style="font-size:10px;padding:2px 6px;margin-inline-start:4px">↩</button>`
+      :`<span class="badge b-dim" style="font-size:10px">⏳ غير مسند</span>`;
+    return`<tr class="pr" data-asid="${sid}" style="cursor:pointer;${assignedTo?'background:rgba(58,201,120,.08);':''}${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}${assignedTo===myName?';border-right:2px solid var(--pur)':''}">
+      <td><input type="checkbox" data-asid="${sid}" ${apiChecked.has(sid)?'checked':''} style="width:16px;height:16px"></td>
       <td class="mob-hide" style="color:var(--dim);font-size:10px;text-align:center">${(aPage-1)*aPER+idx+1}</td>
       <td class="code-cell">${backofficeOrderLinkHtml(s.tracking_code)}</td>
-      <td class="mob-hide" onclick="event.stopPropagation()">${assignCell}</td>
+      <td class="mob-hide">${assignCell}</td>
       <td style="color:var(--white);font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.client_name||''}">${s.client_name||'—'}</td>
       <td class="mob-hide" style="font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.receiver_name||''}">${s.receiver_name||'—'}</td>
       <td class="mob-hide" style="font-family:var(--mono);font-size:11px">${ph?`<span style="color:var(--blu)" dir="ltr">${s.customer_phone}</span>`:'—'}</td>
@@ -5531,23 +5563,56 @@ function renderAPIShipments(){
       <td class="mob-hide" style="font-size:11px;color:var(--mute)">${s.area||'—'}</td>
       <td>${stBadge(s.status)}</td>
       <td>${dBadge(s.delay_days)}</td>
-      <td class="mob-hide" onclick="event.stopPropagation()"><select class="acr-sel" data-asid="${sid}" data-code="${tc}" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 4px;font-size:10px;color:var(--white);font-family:var(--font)">
+      <td class="mob-hide"><select class="acr-sel" data-asid="${sid}" data-code="${tc}" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 4px;font-size:10px;color:var(--white);font-family:var(--font)">
         <option value="" ${!cResult?'selected':''}>—</option>
         <option value="solved" ${cResult==='solved'?'selected':''}>✅ تم الحل</option>
         <option value="contacted" ${cResult==='contacted'?'selected':''}>📞 تم التواصل</option>
         <option value="no_answer" ${cResult==='no_answer'?'selected':''}>📵 لا يرد</option>
         <option value="pending" ${cResult==='pending'?'selected':''}>⏳ قيد المتابعة</option>
       </select></td>
-      <td class="mob-hide" onclick="event.stopPropagation()"><input type="text" value="${note}" placeholder="ملاحظة..." data-asid="${sid}" data-code="${tc}" class="anote-inp" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:3px 7px;font-size:11px;color:var(--white);font-family:var(--font);width:100px"></td>
-      <td onclick="event.stopPropagation()" style="white-space:nowrap"><div style="display:flex;gap:3px">${ph?`<button class="btn btn-wa btn-sm" onclick="apiWA('${sid}','receiver')" style="font-size:10px;padding:3px 6px" title="واتساب للمستلم">📱</button>`:''}${s.captain_phone?`<button class="btn btn-ghost btn-sm" onclick="apiWA('${sid}','captain')" style="font-size:10px;padding:3px 6px;border-color:var(--wa);color:var(--wa)" title="واتساب المندوب">🚗</button>`:''}</div></td>
-      <td class="mob-hide" onclick="event.stopPropagation()"><button class="btn btn-ghost btn-sm" onclick="apiSave('${sid}',this)" style="font-size:11px;padding:4px 9px">💾</button></td>
-      <td class="mob-hide" onclick="event.stopPropagation()"><button class="btn btn-pur btn-sm" onclick="apiMove('${sid}')" style="font-size:10px;padding:4px 8px" title="نقل للطرود الرئيسية">📦→</button></td>
+      <td class="mob-hide"><input type="text" value="${note}" placeholder="ملاحظة..." data-asid="${sid}" data-code="${tc}" class="anote-inp" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:3px 7px;font-size:11px;color:var(--white);font-family:var(--font);width:100px"></td>
+      <td style="white-space:nowrap"><div style="display:flex;gap:3px">${ph?`<button class="btn btn-wa btn-sm" data-a="wa-receiver" style="font-size:10px;padding:3px 6px" title="واتساب للمستلم">📱</button>`:''}${s.captain_phone?`<button class="btn btn-ghost btn-sm" data-a="wa-captain" style="font-size:10px;padding:3px 6px;border-color:var(--wa);color:var(--wa)" title="واتساب المندوب">🚗</button>`:''}</div></td>
+      <td class="mob-hide"><button class="btn btn-ghost btn-sm" data-a="save-row" style="font-size:11px;padding:4px 9px">💾</button></td>
+      <td class="mob-hide"><button class="btn btn-pur btn-sm" data-a="move-row" style="font-size:10px;padding:4px 8px" title="نقل للطرود الرئيسية">📦→</button></td>
     </tr>`;
   }).join('');
+  const allEl=document.getElementById('achk-all');
+  if(allEl)allEl.checked=apiFilteredIds.length>0&&apiFilteredIds.every(id=>apiChecked.has(id));
 
-  // Change event for contact result selects (use delegation on tbody, only once)
-  if(!tbody._adel){
-    tbody._adel=true;
+  // Single delegated listener for clicks and selection interactions
+  if(!tbody._apiDelegated){
+    tbody._apiDelegated=true;
+    tbody.addEventListener('click',async e=>{
+      const row=e.target.closest('.pr');
+      if(!row)return;
+      const sid=row.dataset.asid;
+      const isControl=!!e.target.closest('button,select,input,textarea,a');
+      const actionBtn=e.target.closest('[data-a]');
+      if(actionBtn){
+        const a=actionBtn.dataset.a;
+        if(a==='wa-receiver')return apiWA(sid,'receiver');
+        if(a==='wa-captain')return apiWA(sid,'captain');
+        if(a==='save-row')return apiSave(sid,actionBtn);
+        if(a==='move-row')return apiMove(sid);
+        if(a==='undo-assign'){
+          const s=apiShipments.find(x=>String(x.id)===sid);
+          if(s){
+            setAssignedTo(s.tracking_code,'');
+            flashAPIRow(sid);
+          }
+          return;
+        }
+      }
+      const cb=e.target.closest('input[type="checkbox"][data-asid]');
+      if(cb){
+        toggleAPISelection(sid,cb.checked,e.shiftKey);
+        return;
+      }
+      if(!isControl){
+        const next=!apiChecked.has(sid);
+        toggleAPISelection(sid,next,e.shiftKey);
+      }
+    });
     tbody.addEventListener('change',async e=>{
       const cr=e.target.closest('.acr-sel');
       if(cr){
@@ -5605,6 +5670,109 @@ function updateJSortHeaderIcons(){
     if(!el)return;
     el.textContent=jSortKey===k?(jSortDir==='asc'?'↑':'↓'):'↕';
   });
+}
+function flashJanzourRow(sid){
+  const row=document.querySelector(`#j-tbody tr[data-jsid="${String(sid).replace(/"/g,'\\"')}"]`);
+  if(!row)return;
+  row.style.outline='2px solid rgba(58,201,120,.7)';
+  row.style.outlineOffset='-2px';
+  setTimeout(()=>{row.style.outline='';row.style.outlineOffset='';},900);
+}
+function toggleJSelection(sid,checked,shiftKey){
+  const id=String(sid);
+  if(shiftKey&&jLastSelectedSid&&jFilteredIds.length){
+    const a=jFilteredIds.indexOf(String(jLastSelectedSid));
+    const b=jFilteredIds.indexOf(id);
+    if(a>=0&&b>=0){
+      const [s,e]=a<b?[a,b]:[b,a];
+      for(let i=s;i<=e;i++){
+        const rid=jFilteredIds[i];
+        if(checked)jChecked.add(rid);else jChecked.delete(rid);
+      }
+    }else{
+      if(checked)jChecked.add(id);else jChecked.delete(id);
+    }
+  }else{
+    if(checked)jChecked.add(id);else jChecked.delete(id);
+  }
+  jLastSelectedSid=id;
+  renderJanzour();
+}
+function toggleAllJanzourFiltered(checked){
+  if(!jFilteredIds.length){jChecked.clear();renderJanzour();return;}
+  jFilteredIds.forEach(id=>{if(checked)jChecked.add(id);else jChecked.delete(id);});
+  renderJanzour();
+}
+function getJanzourAssignCounts(){
+  const a=getAPIAssignments();
+  const counts={};
+  janzourShipments.forEach(s=>{
+    const emp=a[s.tracking_code];
+    if(!emp)return;
+    counts[emp]=(counts[emp]||0)+1;
+  });
+  return counts;
+}
+function updateJAssignLiveCounter(){
+  const el=document.getElementById('j-assign-live'); if(!el)return;
+  const emp=document.getElementById('j-assign-emp')?.value||'';
+  if(!emp){el.textContent='—';return;}
+  const c=getJanzourAssignCounts();
+  el.textContent=`${emp} (${c[emp]||0} طرد)`;
+}
+function updateJanzourAssignControls(){
+  const emps=Object.values(USERS).filter(u=>u.status!=='inactive'&&u.name).map(u=>u.name);
+  const counts=getJanzourAssignCounts();
+  const fill=(id,placeholder)=>{
+    const sel=document.getElementById(id); if(!sel)return;
+    const prev=sel.value;
+    sel.innerHTML=`<option value="">${placeholder}</option>`+emps.map(n=>`<option value="${String(n).replace(/"/g,'&quot;')}">${n} (${counts[n]||0})</option>`).join('');
+    if(prev&&emps.includes(prev))sel.value=prev;
+  };
+  fill('j-assign-emp','اختر موظف...');
+  fill('j-assign-branch-emp','اختر موظف...');
+  const brSel=document.getElementById('j-assign-branch');
+  if(brSel){
+    const prev=brSel.value;
+    const branches=[...new Set(jFilteredData.map(s=>String(s.current_branch||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
+    brSel.innerHTML='<option value="">كل الفروع (حسب الفلتر)</option>'+branches.map(b=>`<option value="${b.replace(/"/g,'&quot;')}">${b}</option>`).join('');
+    if(prev&&branches.includes(prev))brSel.value=prev;
+  }
+  updateJAssignLiveCounter();
+}
+function assignSelectedJanzour(){
+  const emp=document.getElementById('j-assign-emp')?.value||'';
+  if(!emp){toast('اختر موظفاً أولاً','w');return;}
+  const a=getAPIAssignments(); let count=0;
+  jChecked.forEach(id=>{
+    const s=apiShipments.find(x=>String(x.id)===String(id));
+    if(s){a[s.tracking_code]=emp;count++;}
+  });
+  saveAPIAssignments(a);
+  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();
+  toast(`✅ تم تعيين ${count} طرد في جنزور إلى ${emp}`,'s');
+}
+function unassignSelectedJanzour(){
+  const a=getAPIAssignments(); let count=0;
+  jChecked.forEach(id=>{
+    const s=apiShipments.find(x=>String(x.id)===String(id));
+    if(s&&a[s.tracking_code]){delete a[s.tracking_code];count++;}
+  });
+  saveAPIAssignments(a);
+  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();
+  toast(`تم إلغاء تعيين ${count} طرد`,'s');
+}
+function bulkAssignFilteredJanzourBranch(){
+  const branch=document.getElementById('j-assign-branch')?.value||'';
+  const emp=document.getElementById('j-assign-branch-emp')?.value||'';
+  if(!emp){toast('اختر موظفاً أولاً','w');return;}
+  const targets=jFilteredData.filter(s=>!branch||String(s.current_branch||'').trim()===branch);
+  if(!targets.length){toast('لا توجد طرود مطابقة','w');return;}
+  const a=getAPIAssignments();
+  targets.forEach(s=>{a[s.tracking_code]=emp;});
+  saveAPIAssignments(a);
+  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();
+  toast(`✅ تم تعيين ${targets.length} طرد من ${branch||'كل الفروع'} إلى ${emp}`,'s');
 }
 
 function updateJanzourKPIs(list){
@@ -5718,6 +5886,9 @@ function renderJanzour(){
     return jSortDir==='asc'?cmp:-cmp;
   });
   updateJSortHeaderIcons();
+  jFilteredData=list.slice();
+  jFilteredIds=jFilteredData.map(s=>String(s.id));
+  updateJanzourAssignControls();
 
   const per=Math.max(1,jPER||25);
   const total=list.length;
@@ -5733,40 +5904,48 @@ function renderJanzour(){
 
   const tbody=el('j-tbody');
   if(!page.length){
-    tbody.innerHTML=`<tr><td colspan="13" style="text-align:center;padding:32px;color:var(--mute)">${janzourShipments.length?'🔍 لا نتائج مطابقة':'🔌 اضغط "جلب الآن" في طرود API لتحميل البيانات'}</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="15" style="text-align:center;padding:32px;color:var(--mute)">${janzourShipments.length?'🔍 لا نتائج مطابقة':'🔌 اضغط "جلب الآن" في طرود API لتحميل البيانات'}</td></tr>`;
+    const allEl=document.getElementById('jchk-all');if(allEl)allEl.checked=false;
   } else {
     tbody.innerHTML=page.map((s,i)=>{
       const ph=s.customer_phone&&s.customer_phone!=='—'&&s.customer_phone!=='undefined';
-      const waBtn=ph?`<button class="btn btn-wa btn-sm" onclick="apiWA('${s.id}','receiver')" style="font-size:10px;padding:3px 6px">📱</button>`:'';
+      const waBtn=ph?`<button class="btn btn-wa btn-sm" data-a="wa-j" style="font-size:10px;padding:3px 6px">📱</button>`:'';
       const crData=getCR(s.id);
       const crColor=crData.result==='solved'?'var(--grn)':crData.result==='contacted'?'var(--blu)':crData.result==='no_answer'?'var(--red)':crData.result==='pending'?'var(--gold)':'';
-      const sid=s.id.replace(/'/g,"\\'");
-      return`<tr class="pr" style="${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}">
-        <td style="color:var(--dim);font-size:10px" onclick="openAPIDetail('${sid}')">${(jPage-1)*per+i+1}</td>
-        <td style="font-weight:700;color:var(--white);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" title="${s.client_name}" onclick="openAPIDetail('${sid}')">${s.client_name||'—'}</td>
-        <td class="code-cell" style="cursor:pointer" onclick="openAPIDetail('${sid}')">${backofficeOrderLinkHtml(s.tracking_code)}</td>
-        <td style="font-size:11px;cursor:pointer" onclick="openAPIDetail('${sid}')">${s.captain||'—'}</td>
-        <td class="mob-hide" style="font-size:11px;color:var(--mute);cursor:pointer" onclick="openAPIDetail('${sid}')">${s.current_branch||'—'}</td>
-        <td class="mob-hide" style="font-size:11px;color:var(--pale);cursor:pointer" onclick="openAPIDetail('${sid}')">${s.government||'—'}</td>
-        <td style="cursor:pointer" onclick="openAPIDetail('${sid}')">${stBadge(s.status)}</td>
-        <td style="cursor:pointer" onclick="openAPIDetail('${sid}')">${dBadge(s.delay_days)}</td>
-        <td onclick="event.stopPropagation()" style="min-width:130px">
+      const sidRaw=String(s.id);
+      const sid=sidRaw.replace(/'/g,"\\'");
+      const assigned=(assignments[s.tracking_code]||'').trim();
+      const assignCell=assigned
+        ?`<span class="badge b-grn" style="font-size:10px">${assigned}</span><button class="btn btn-ghost btn-sm" data-a="undo-jassign" data-code="${String(s.tracking_code||'').replace(/"/g,'&quot;')}" style="font-size:10px;padding:2px 6px;margin-inline-start:4px">↩</button>`
+        :`<span class="badge b-dim" style="font-size:10px">⏳ غير مسند</span>`;
+      return`<tr class="pr" data-jsid="${sidRaw.replace(/"/g,'&quot;')}" style="${assigned?'background:rgba(58,201,120,.08);':''}${cls(s.delay_days)==='critical'?'background:rgba(255,58,92,.04)':''}">
+        <td><input type="checkbox" data-jsid="${sidRaw.replace(/"/g,'&quot;')}" ${jChecked.has(sidRaw)?'checked':''} style="width:16px;height:16px"></td>
+        <td style="color:var(--dim);font-size:10px">${(jPage-1)*per+i+1}</td>
+        <td style="font-weight:700;color:var(--white);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.client_name}">${s.client_name||'—'}</td>
+        <td class="code-cell">${backofficeOrderLinkHtml(s.tracking_code)}</td>
+        <td style="font-size:11px">${s.captain||'—'}</td>
+        <td>${assignCell}</td>
+        <td class="mob-hide" style="font-size:11px;color:var(--mute)">${s.current_branch||'—'}</td>
+        <td class="mob-hide" style="font-size:11px;color:var(--pale)">${s.government||'—'}</td>
+        <td>${stBadge(s.status)}</td>
+        <td>${dBadge(s.delay_days)}</td>
+        <td style="min-width:130px">
           <select class="fi" id="jcr-${i}" style="font-size:11px;padding:3px 6px;min-width:128px;border-color:${crColor||'var(--rim)'};color:${crColor||'inherit'}" onchange="document.getElementById('jcr-${i}').style.color=this.value?'':'inherit'">
             ${crOpts}
           </select>
         </td>
-        <td onclick="event.stopPropagation()" style="min-width:160px">
+        <td style="min-width:160px">
           <select class="fi jnote-sel" id="jnote-${i}" style="font-size:11px;padding:3px 6px;min-width:140px;width:100%;max-width:280px">
             ${janzourNoteSelectHtml(crData.note||'')}
           </select>
         </td>
-        <td onclick="event.stopPropagation()">
-          <button type="button" class="btn btn-grn btn-sm" title="تم التسليم — تحديث الحالة ومؤشرات الفرع والمندوب" onclick="janzourQuickDelivered('${sid}')" style="font-size:10px;padding:4px 8px;white-space:nowrap">✓ تسليم</button>
+        <td>
+          <button type="button" class="btn btn-grn btn-sm" data-a="quick-delivered" title="تم التسليم — تحديث الحالة ومؤشرات الفرع والمندوب" style="font-size:10px;padding:4px 8px;white-space:nowrap">✓ تسليم</button>
         </td>
-        <td onclick="event.stopPropagation()">
-          <button type="button" class="btn btn-pur btn-sm" id="jsave-${i}" onclick="saveJanzourCR('${sid}',${i})" style="font-size:10px;padding:4px 8px;white-space:nowrap">💾 حفظ</button>
+        <td>
+          <button type="button" class="btn btn-pur btn-sm" id="jsave-${i}" data-a="save-j" data-jidx="${i}" style="font-size:10px;padding:4px 8px;white-space:nowrap">💾 حفظ</button>
         </td>
-        <td onclick="event.stopPropagation()">${waBtn}</td>
+        <td>${waBtn}</td>
       </tr>`;
     }).join('');
     // Set selected CR values after rendering
@@ -5780,6 +5959,36 @@ function renderJanzour(){
         sel.style.borderColor=c||'var(--rim)';
       }
     });
+    const allEl=document.getElementById('jchk-all');
+    if(allEl)allEl.checked=jFilteredIds.length>0&&jFilteredIds.every(id=>jChecked.has(id));
+    if(!tbody._jDelegated){
+      tbody._jDelegated=true;
+      tbody.addEventListener('click',async e=>{
+        const row=e.target.closest('.pr'); if(!row)return;
+        const sid=row.dataset.jsid;
+        const actionBtn=e.target.closest('[data-a]');
+        if(actionBtn){
+          const a=actionBtn.dataset.a;
+          if(a==='wa-j')return apiWA(sid,'receiver');
+          if(a==='quick-delivered')return janzourQuickDelivered(sid);
+          if(a==='save-j')return saveJanzourCR(sid,parseInt(actionBtn.dataset.jidx||'0',10));
+          if(a==='undo-jassign'){
+            const code=actionBtn.dataset.code||'';
+            const amap=getAPIAssignments();delete amap[code];saveAPIAssignments(amap);
+            flashJanzourRow(sid);renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();updateJAssignLiveCounter();
+            toast('تم إلغاء التعيين','s');
+            return;
+          }
+        }
+        const cb=e.target.closest('input[type="checkbox"][data-jsid]');
+        if(cb){toggleJSelection(sid,cb.checked,e.shiftKey);return;}
+        const isControl=!!e.target.closest('button,select,input,textarea,a');
+        if(!isControl){
+          const next=!jChecked.has(String(sid));
+          toggleJSelection(sid,next,e.shiftKey);
+        }
+      });
+    }
   }
 
   // Build pagination
@@ -5981,11 +6190,38 @@ function apiMove(sid){
   moveAPIToMain(s);
 }
 
-function toggleAllAPI(el){
-  document.querySelectorAll('#a-tbody input[type=checkbox]').forEach(cb=>{
-    cb.checked=el.checked;
-    el.checked?apiChecked.add(cb.dataset.asid):apiChecked.delete(cb.dataset.asid);
-  });
+function toggleAPISelection(sid,checked,shiftKey){
+  const id=String(sid);
+  if(shiftKey&&apiLastSelectedSid&&apiFilteredIds.length){
+    const aIdx=apiFilteredIds.indexOf(String(apiLastSelectedSid));
+    const bIdx=apiFilteredIds.indexOf(id);
+    if(aIdx>=0&&bIdx>=0){
+      const [s,e]=aIdx<bIdx?[aIdx,bIdx]:[bIdx,aIdx];
+      for(let i=s;i<=e;i++){
+        const rid=apiFilteredIds[i];
+        if(checked)apiChecked.add(rid); else apiChecked.delete(rid);
+      }
+    } else {
+      if(checked)apiChecked.add(id); else apiChecked.delete(id);
+    }
+  } else {
+    if(checked)apiChecked.add(id); else apiChecked.delete(id);
+  }
+  apiLastSelectedSid=id;
+  renderAPIShipments();
+}
+function toggleAllAPIFiltered(checked){
+  if(!apiFilteredIds.length){apiChecked.clear();renderAPIShipments();return;}
+  apiFilteredIds.forEach(id=>{if(checked)apiChecked.add(id); else apiChecked.delete(id);});
+  renderAPIShipments();
+}
+function flashAPIRow(sid){
+  const row=document.querySelector(`#a-tbody tr[data-asid="${String(sid).replace(/"/g,'\\"')}"]`);
+  if(!row)return;
+  const prev=row.style.outline;
+  row.style.outline='2px solid rgba(58,201,120,.7)';
+  row.style.outlineOffset='-2px';
+  setTimeout(()=>{row.style.outline=prev||'';row.style.outlineOffset='';},900);
 }
 
 function bulkWA_API(){
@@ -6760,8 +6996,11 @@ function setAssignedTo(code,empName){
   if(empName)a[code]=empName;
   else delete a[code];
   saveAPIAssignments(a);
+  const s=apiShipments.find(x=>String(x.tracking_code)===String(code));
   renderAPIShipments();
   renderAssignStats();
+  updateAssignLiveCounter();
+  if(s)flashAPIRow(s.id);
   if(empName)toast(`✅ الطرد ${code} → ${empName}`,'s');
 }
 
@@ -6835,6 +7074,20 @@ function assignSelected(){
   refreshAssignPanelEmps();
   toast(`✅ تم تعيين ${count} طرد إلى ${emp}`,'s');
 }
+function bulkAssignFilteredBranch(){
+  const branch=document.getElementById('assign-branch-filter')?.value||'';
+  const emp=document.getElementById('assign-branch-emp')?.value||'';
+  if(!emp){toast('اختر موظفاً أولاً','w');return;}
+  const targets=apiFilteredData.filter(s=>!branch||String(s.current_branch||'')===branch);
+  if(!targets.length){toast('لا توجد طرود مطابقة للفلتر الحالي','w');return;}
+  const a=getAPIAssignments();
+  targets.forEach(s=>{a[s.tracking_code]=emp;});
+  saveAPIAssignments(a);
+  renderAPIShipments();
+  renderAssignStats();
+  refreshAssignPanelEmps();
+  toast(`✅ تم تعيين ${targets.length} طرد من ${branch||'كل الفروع'} إلى ${emp}`,'s');
+}
 
 function unassignSelected(){
   const a=getAPIAssignments();
@@ -6900,6 +7153,25 @@ function refreshAssignPanelEmps(){
   // Manual assign dropdown
   const manEl=document.getElementById('manual-assign-emp');
   if(manEl)manEl.innerHTML='<option value="">اختر موظف...</option>'+emps.map(u=>`<option value="${u.name}">${u.name} (${counts[u.name]||0} طرد)</option>`).join('');
+  const brEmpEl=document.getElementById('assign-branch-emp');
+  if(brEmpEl)brEmpEl.innerHTML='<option value="">اختر موظف...</option>'+emps.map(u=>`<option value="${u.name}">${u.name} (${counts[u.name]||0})</option>`).join('');
+  const brEl=document.getElementById('assign-branch-filter');
+  if(brEl){
+    const prev=brEl.value;
+    const branches=[...new Set(apiFilteredData.map(s=>String(s.current_branch||'').trim()).filter(Boolean))].sort((x,y)=>x.localeCompare(y,'ar'));
+    brEl.innerHTML='<option value="">كل الفروع (حسب الفلتر الحالي)</option>'+branches.map(b=>`<option value="${b.replace(/"/g,'&quot;')}">${b}</option>`).join('');
+    if(prev&&branches.includes(prev))brEl.value=prev;
+  }
+  updateAssignLiveCounter();
+}
+function updateAssignLiveCounter(){
+  const live=document.getElementById('manual-assign-live');
+  if(!live)return;
+  const emp=document.getElementById('manual-assign-emp')?.value||'';
+  if(!emp){live.textContent='—';return;}
+  const a=getAPIAssignments();
+  const cnt=Object.values(a).filter(v=>v===emp).length;
+  live.textContent=`${emp} (${cnt} طرد)`;
 }
 
 function closeAssignPanel(){
