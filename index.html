@@ -5610,8 +5610,12 @@ function renderAPIShipments(){
         return;
       }
       if(!isControl){
-        const next=!apiChecked.has(sid);
-        toggleAPISelection(sid,next,e.shiftKey);
+        if(e.shiftKey){
+          const next=!apiChecked.has(sid);
+          toggleAPISelection(sid,next,true);
+        }else{
+          openAPIDetail(sid);
+        }
       }
     });
     tbody.addEventListener('change',async e=>{
@@ -6002,8 +6006,12 @@ function renderJanzour(){
         if(cb){toggleJSelection(sid,cb.checked,e.shiftKey);return;}
         const isControl=!!e.target.closest('button,select,input,textarea,a');
         if(!isControl){
-          const next=!jChecked.has(String(sid));
-          toggleJSelection(sid,next,e.shiftKey);
+          if(e.shiftKey){
+            const next=!jChecked.has(String(sid));
+            toggleJSelection(sid,next,true);
+          }else{
+            openAPIDetail(sid);
+          }
         }
       });
     }
