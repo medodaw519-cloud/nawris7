@@ -3457,7 +3457,7 @@ function renderTransfers(){
     if(Number(s.delay_days||0)<3)return false;
     const b1=String(s.previous_branch||'').trim();
     const b2=String(s.received_branch||s.current_branch||'').trim();
-    if(!userCanAccessBranch(CU,b1)&&!userCanAccessBranch(CU,b2))return false;
+    if((b1||b2)&&!userCanAccessBranch(CU,b1)&&!userCanAccessBranch(CU,b2))return false;
     return true;
   });
   const tbody=document.getElementById('t-tbody');
@@ -4198,13 +4198,55 @@ async function apiFetch(baseUrl,token,cursor){
 }
 
 function getBranchFollowupAPIConfig(){
-  const defaultUrl='https://backoffice.nawris.algoriza.com/external-api/orders/delayed?delay_days=5';
+  const defaultUrl='https://backoffice.nawris.algoriza.com/external-api/orders/delayed';
   const url=(localStorage.getItem('branch_followup_api_url')||'').trim()||defaultUrl;
   const token=(localStorage.getItem('branch_followup_api_token')||'').trim()
     ||document.getElementById('api-token2')?.value?.trim()
     ||document.getElementById('api-token')?.value?.trim()
     ||'';
   return {url,token};
+}
+
+function withDelayDays(baseUrl,delayDays){
+  const clean=String(baseUrl||'').replace(/[?&]cursor=[^&]*/g,'').replace(/[?&]$/,'');
+  if(clean.includes('delay_days=')){
+    return clean.replace(/([?&])delay_days=\d+/,'$1delay_days='+delayDays);
+  }
+  return `${clean}${clean.includes('?')?'&':'?'}delay_days=${delayDays}`;
+}
+
+async function fetchBranchFollowupRowsByDelay(baseUrl,token,delayDays,maxPages){
+  const dayUrl=withDelayDays(baseUrl,delayDays);
+  const seen=new Set();
+  const rows=[];
+  let nextCursor=null;
+  for(let page=1;page<=maxPages;page++){
+    const res=await apiFetch(dayUrl,token,nextCursor||'');
+    if(!res.ok)break;
+    const json=await res.json();
+    const pageData=Array.isArray(json)?json:json?.data||json?.results||json?.orders||json?.shipments||[];
+    nextCursor=json?.meta?.next_cursor||json?.next_cursor||null;
+
+    for(const item of pageData){
+      const code=String(item.code||item.tracking_code||item.order_id||item.ParcelCode||item.id||'').trim();
+      const key=`${delayDays}::${code}`;
+      if(!code||seen.has(key))continue;
+      seen.add(key);
+      rows.push({
+        tracking_code:code,
+        client_name:String(item.client_name||item.customer_name||item.name||'—').trim(),
+        captain:String(item.captain||item.driver_name||item.driver||item.assignee||'').trim(),
+        status:String(item.status||'').trim(),
+        raw_status:String(item.status||'').trim(),
+        delay_days:parseInt(item.delay_days||0)||0,
+        previous_branch:String(item.previous_branch||item.previousBranch||'').trim(),
+        received_branch:String(item.received_branch||item.receivedBranch||'').trim(),
+        current_branch:String(item.current_branch||item.currentBranch||'').trim(),
+      });
+    }
+    if(!nextCursor||!pageData.length)break;
+  }
+  return rows;
 }
 
 async function refreshBranchFollowupAPI(force=false){
@@ -4217,36 +4259,19 @@ async function refreshBranchFollowupAPI(force=false){
 
   try{
     const baseUrl=url.replace(/[?&]cursor=[^&]*/g,'').replace(/[?&]$/,'');
-    const seen=new Set();
-    const rows=[];
     const MAX_PAGES=150;
-    let nextCursor=null;
+    const [companyRows,transferRows]=await Promise.all([
+      fetchBranchFollowupRowsByDelay(baseUrl,token,1,MAX_PAGES), // in company: more than one day
+      fetchBranchFollowupRowsByDelay(baseUrl,token,2,MAX_PAGES)  // transfers: more than two days
+    ]);
 
-    for(let page=1;page<=MAX_PAGES;page++){
-      const res=await apiFetch(baseUrl,token,nextCursor||'');
-      if(!res.ok)break;
-      const json=await res.json();
-      const pageData=Array.isArray(json)?json:json?.data||json?.results||json?.orders||json?.shipments||[];
-      nextCursor=json?.meta?.next_cursor||json?.next_cursor||null;
-
-      for(const item of pageData){
-        const code=String(item.code||item.tracking_code||item.order_id||item.ParcelCode||item.id||'').trim();
-        if(!code||seen.has(code))continue;
-        seen.add(code);
-        rows.push({
-          tracking_code:code,
-          client_name:String(item.client_name||item.customer_name||item.name||'—').trim(),
-          captain:String(item.captain||item.driver_name||item.driver||item.assignee||'').trim(),
-          status:String(item.status||'').trim(),
-          raw_status:String(item.status||'').trim(),
-          delay_days:parseInt(item.delay_days||0)||0,
-          previous_branch:String(item.previous_branch||item.previousBranch||'').trim(),
-          received_branch:String(item.received_branch||item.receivedBranch||'').trim(),
-          current_branch:String(item.current_branch||item.currentBranch||'').trim(),
-        });
-      }
-      if(!nextCursor||!pageData.length)break;
-    }
+    const dedup=new Map();
+    [...companyRows,...transferRows].forEach(r=>{
+      const key=String(r.tracking_code||'');
+      if(!key)return;
+      if(!dedup.has(key))dedup.set(key,r);
+    });
+    const rows=[...dedup.values()];
 
     branchFollowupRows=rows;
     branchFollowupLastFetchAt=Date.now();
