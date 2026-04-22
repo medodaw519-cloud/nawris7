@@ -4826,18 +4826,38 @@ async function fetchFromAPI(){
       mapped.push({tracking_code:code,customer_name:String(r.client_name||r.customer_name||r.name||'—').trim(),customer_phone:String(r.receiver_phone||r.customer_phone||r.phone||'—').trim(),status:stMap[r.status]||r.status||'with_driver',delay_days:parseInt(r[delayField]||r.delay_days||0)||0,upload_date:new Date().toISOString().split('T')[0]});
     }
     if(!MANUAL_EXCEL_SHIPMENTS_ONLY){
-      for(let i=0;i<mapped.length;i+=100){
-        const res=await fetch(`${SB}/rest/v1/shipments?on_conflict=tracking_code`,{
-          method:'POST',
-          headers:{...H,'Prefer':'resolution=merge-duplicates,return=minimal'},
-          body:JSON.stringify(mapped.slice(i,i+100))
-        });
-        if(!res.ok){const err=await res.text();throw new Error('فشل مزامنة الطرود: '+err.substring(0,120));}
+      const UPSERT_BATCH_SIZE=1000;
+      const UPSERT_CONCURRENCY=4;
+      const totalChunks=Math.ceil(mapped.length/UPSERT_BATCH_SIZE);
+      const chunks=[];
+      for(let i=0;i<mapped.length;i+=UPSERT_BATCH_SIZE){
+        chunks.push(mapped.slice(i,i+UPSERT_BATCH_SIZE));
+      }
+      let done=0;
+      for(let i=0;i<chunks.length;i+=UPSERT_CONCURRENCY){
+        const group=chunks.slice(i,i+UPSERT_CONCURRENCY);
+        const results=await Promise.all(group.map(async (chunk)=>{
+          const res=await fetch(`${SB}/rest/v1/shipments?on_conflict=tracking_code`,{
+            method:'POST',
+            headers:{...H,'Prefer':'resolution=merge-duplicates,return=minimal'},
+            body:JSON.stringify(chunk)
+          });
+          if(!res.ok){
+            const err=await res.text().catch(()=>'');
+            throw new Error('فشل مزامنة الطرود: '+err.substring(0,200));
+          }
+          return true;
+        }));
+        done+=results.length;
+        el.textContent=`⏳ جارٍ حفظ الطرود... ${done}/${totalChunks} دفعة`;
       }
     }
     el.innerHTML=`<span style="color:var(--grn)">✅ تم جلب ${mapped.length} طرد من API (${Math.min(page,totalPages)} صفحة)${MANUAL_EXCEL_SHIPMENTS_ONLY?' — بدون إدخال لجدول الطرود الرئيسي':''}</span>`;
     toast(`✅ ${mapped.length} طرد من API`,'s');
-    await loadShipments();loadDbStats();
+    if(mapped.length<=5000){
+      await loadShipments();
+    }
+    loadDbStats();
   }catch(e){el.innerHTML=`<span style="color:var(--red)">❌ ${e.message}</span>`;toast('خطأ في API: '+e.message,'e');}
 }
 function setAutoFetch(){
