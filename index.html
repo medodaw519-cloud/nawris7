@@ -1042,7 +1042,6 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div style="font-size:18px;font-weight:800">📦 الطرود <span class="badge b-pur" style="font-size:11px">جلب تلقائي من النظام</span></div>
       <div style="display:flex;gap:7px;flex-wrap:wrap">
-        <button class="btn btn-pur btn-sm" onclick="fetchAPIShipments()">⬇️ جلب الآن</button>
         <button class="btn btn-ghost btn-sm" onclick="renderAPIShipments()">↻ تحديث العرض</button>
         <button class="btn btn-wa btn-sm" onclick="bulkWA_API()">💬 واتساب للمحددين</button>
         <button class="btn btn-gold btn-sm manager-only" onclick="openAssignPanel()">👥 توزيع الطرود</button>
@@ -1105,7 +1104,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
           <input class="fi" id="api-url2" placeholder="رابط API..." dir="ltr" style="min-width:200px;font-size:11px">
           <input class="fi" id="api-token2" type="password" placeholder="Token..." dir="ltr" style="min-width:140px;font-size:11px">
           <select class="fi" id="api-interval2" style="font-size:11px;min-width:auto">
-            <option value="0">يدوي</option>
+            <option value="0">إيقاف</option>
             <option value="1">كل ساعة</option>
             <option value="3">كل 3 ساعات</option>
             <option value="6">كل 6 ساعات</option>
@@ -1189,7 +1188,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
             <th onclick="setAPISort('status')" style="cursor:pointer;user-select:none">الحالة <span id="a-sort-status">↕</span></th><th onclick="setAPISort('delay_days')" style="cursor:pointer;user-select:none">التأخير <span id="a-sort-delay_days">↓</span></th><th class="mob-hide" onclick="setAPISort('cr_result')" style="cursor:pointer;user-select:none">نتيجة التواصل <span id="a-sort-cr_result">↕</span></th><th class="mob-hide" onclick="setAPISort('cr_note')" style="cursor:pointer;user-select:none">ملاحظة <span id="a-sort-cr_note">↕</span></th>
             <th>واتساب</th><th class="mob-hide">حفظ</th><th class="mob-hide">نقل</th>
           </tr></thead>
-          <tbody id="a-tbody"><tr><td colspan="18" style="text-align:center;padding:36px;color:var(--mute)">🔗 اضغط "جلب الآن" أو أعد إعدادات API من تبويب "رفع البيانات"</td></tr></tbody>
+          <tbody id="a-tbody"><tr><td colspan="18" style="text-align:center;padding:36px;color:var(--mute)">🔗 الجلب تلقائي — أعد إعدادات API من تبويب "رفع البيانات" عند الحاجة</td></tr></tbody>
         </table>
       </div>
       <div style="padding:10px 16px;border-top:1px solid var(--rim);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1315,7 +1314,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
           <th title="تسجيل تسليم + تم الحل + مزامنة المؤشرات">تم التسليم</th><th>حفظ</th>
           <th>واتساب</th>
         </tr></thead>
-        <tbody id="j-tbody"><tr><td colspan="15" style="text-align:center;padding:32px;color:var(--mute)">اضغط "جلب الآن" في طرود API لتحميل البيانات</td></tr></tbody>
+        <tbody id="j-tbody"><tr><td colspan="15" style="text-align:center;padding:32px;color:var(--mute)">سيتم تحميل بيانات API تلقائياً بعد الاتصال</td></tr></tbody>
       </table>
     </div>
     <div style="padding:10px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1689,11 +1688,10 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <button class="btn btn-ghost" onclick="testAPI()">🔌 اختبار الاتصال</button>
-          <button class="btn btn-pur" onclick="fetchFromAPI()">⬇️ جلب الطرود الآن</button>
           <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
             <label style="font-size:11px;color:var(--pale);white-space:nowrap">جلب كل</label>
             <select class="fi" style="flex:1" id="api-interval">
-              <option value="0">يدوي</option>
+              <option value="0">إيقاف</option>
               <option value="1">ساعة</option>
               <option value="3">3 ساعات</option>
               <option value="6">6 ساعات</option>
@@ -4650,7 +4648,7 @@ async function renderStaff(){
   const capTotal=document.getElementById('staff-api-total');
   if(capEl){
     if(!apiShipments.length){
-      capEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--mute)">لا توجد طرود API — اضغط "جلب الآن" من تبويب طرود API</div>';
+      capEl.innerHTML='<div style="text-align:center;padding:24px;color:var(--mute)">لا توجد طرود API — تأكد من تفعيل الجلب التلقائي</div>';
       if(capTotal)capTotal.textContent='0 طرد';
     } else {
       if(capTotal)capTotal.textContent=apiShipments.length+' طرد';
@@ -5610,7 +5608,7 @@ function renderAPIShipments(){
 
   const tbody=document.getElementById('a-tbody');
   if(!page.length){
-    tbody.innerHTML=`<tr><td colspan="18" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج — اضغط "جلب الآن" لجلب البيانات من API</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="18" style="text-align:center;padding:32px;color:var(--mute)">🔍 لا نتائج — انتظر الجلب التلقائي أو فعّل الاتصال</td></tr>`;
     const allEl=document.getElementById('achk-all');
     if(allEl)allEl.checked=false;
     buildAPIPgn(total,totalP);
@@ -6004,7 +6002,7 @@ function renderJanzour(){
 
   const tbody=el('j-tbody');
   if(!page.length){
-    tbody.innerHTML=`<tr><td colspan="15" style="text-align:center;padding:32px;color:var(--mute)">${janzourShipments.length?'🔍 لا نتائج مطابقة':'🔌 اضغط "جلب الآن" في طرود API لتحميل البيانات'}</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="15" style="text-align:center;padding:32px;color:var(--mute)">${janzourShipments.length?'🔍 لا نتائج مطابقة':'🔌 لا توجد بيانات بعد — فعّل اتصال API والجلب التلقائي'}</td></tr>`;
     const allEl=document.getElementById('jchk-all');if(allEl)allEl.checked=false;
   } else {
     tbody.innerHTML=page.map((s,i)=>{
