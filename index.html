@@ -3414,7 +3414,7 @@ function setBranchFilterOptions(selectId,branches,placeholder){
 }
 function getTransferTripDayKey(row){
   const raw=String(
-    row.transfer_date||row.trip_date||row.moved_at||row.updated_at||row.created_at||row.date||row.order_date||''
+    row.transfer_date||row.trip_date||row.moved_at||row.date||row.order_date||row.created_at||''
   ).trim();
   if(!raw)return 'غير محدد';
   const m=raw.match(/^(\d{4}-\d{2}-\d{2})/);
@@ -3427,6 +3427,26 @@ function getTransferTripDayKey(row){
     return `${y}-${mm}-${dd}`;
   }
   return 'غير محدد';
+}
+function getBFSenderBranch(row){
+  return String(
+    row.previous_branch||row.from_branch||row.fromBranch||row.sender_branch||row.source_branch||row.branch_from||''
+  ).trim();
+}
+function getBFReceiverBranch(row){
+  return String(
+    row.received_branch||row.to_branch||row.toBranch||row.receiver_branch||row.destination_branch||row.branch_to||row.current_branch||row.currentBranch||''
+  ).trim();
+}
+function getBFDedupKey(row){
+  return [
+    String(row.tracking_code||'').trim(),
+    getBFSenderBranch(row),
+    getBFReceiverBranch(row),
+    String(row.status||row.raw_status||'').trim(),
+    String(row.delay_days??'').trim(),
+    getTransferTripDayKey(row)
+  ].join('||');
 }
 function toggleBranchFollowupTrip(encodedKey){
   const key=decodeURIComponent(encodedKey||'');
@@ -3450,15 +3470,15 @@ function renderReturns(){
       rawNorm.includes('داخل الفرع');
     if(!inCompany)return false;
     if(Number(s.delay_days||0)<2)return false;
-    const scopeBranch=String(s.received_branch||s.current_branch||'').trim();
+    const scopeBranch=getBFReceiverBranch(s);
     if(scopeBranch&&!userCanAccessBranch(CU,scopeBranch))return false;
     return true;
   });
-  setBranchFilterOptions('bf-company-branch',companyRows.map(s=>String(s.received_branch||s.current_branch||'').trim()),'كل الفروع');
+  setBranchFilterOptions('bf-company-branch',companyRows.map(s=>getBFReceiverBranch(s)),'كل الفروع');
   const selectedBranch=String(document.getElementById('bf-company-branch')?.value||'').trim();
   const minDays=Math.max(0,parseInt(document.getElementById('bf-company-days-min')?.value||'2')||2);
   const list=companyRows.filter(s=>{
-    const branch=String(s.received_branch||s.current_branch||'').trim();
+    const branch=getBFReceiverBranch(s);
     if(selectedBranch&&branch!==selectedBranch)return false;
     if(Number(s.delay_days||0)<minDays)return false;
     return true;
@@ -3470,7 +3490,7 @@ function renderReturns(){
     <td>${s.client_name||s.receiver_name||'—'}</td>
     <td>${s.captain||'—'}</td>
     <td>${stBadge(s.status||s.raw_status)}</td>
-    <td>${s.received_branch||s.current_branch||'—'}</td>
+    <td>${getBFReceiverBranch(s)||'—'}</td>
     <td>${dBadge(s.delay_days,s.status)}</td>
     <td><span class="badge b-pur">API</span></td>
   </tr>`).join('');
@@ -3518,19 +3538,19 @@ function renderTransfers(){
       (rawNorm.includes('فرع')&&rawNorm.includes('طريق'));
     if(!inTransfer)return false;
     if(Number(s.delay_days||0)<minDays)return false;
-    const b1=String(s.previous_branch||'').trim();
-    const b2=String(s.received_branch||s.current_branch||'').trim();
+    const b1=getBFSenderBranch(s);
+    const b2=getBFReceiverBranch(s);
     if((b1||b2)&&!userCanAccessBranch(CU,b1)&&!userCanAccessBranch(CU,b2))return false;
     return true;
   });
-  setBranchFilterOptions('bf-transfer-from',transferRows.map(s=>String(s.previous_branch||'').trim()),'كل الفروع (المرسل)');
-  setBranchFilterOptions('bf-transfer-to',transferRows.map(s=>String(s.received_branch||s.current_branch||'').trim()),'كل الفروع (المستلم)');
+  setBranchFilterOptions('bf-transfer-from',transferRows.map(s=>getBFSenderBranch(s)),'كل الفروع (المرسل)');
+  setBranchFilterOptions('bf-transfer-to',transferRows.map(s=>getBFReceiverBranch(s)),'كل الفروع (المستلم)');
   const fromFilter=String(document.getElementById('bf-transfer-from')?.value||'').trim();
   const toFilter=String(document.getElementById('bf-transfer-to')?.value||'').trim();
   const viewMode=String(document.getElementById('bf-transfer-view')?.value||'trips');
   const list=transferRows.filter(s=>{
-    const fromBranch=String(s.previous_branch||'').trim();
-    const toBranch=String(s.received_branch||s.current_branch||'').trim();
+    const fromBranch=getBFSenderBranch(s);
+    const toBranch=getBFReceiverBranch(s);
     if(fromFilter&&fromBranch!==fromFilter)return false;
     if(toFilter&&toBranch!==toFilter)return false;
     return true;
@@ -3541,8 +3561,8 @@ function renderTransfers(){
   if(viewMode==='orders'){
     tbody.innerHTML=list.map(s=>`<tr>
       <td class="code-cell">${backofficeOrderLinkHtml(s.tracking_code||'—')}</td>
-      <td>${s.previous_branch||'—'}</td>
-      <td>${s.received_branch||s.current_branch||'—'}</td>
+      <td>${getBFSenderBranch(s)||'—'}</td>
+      <td>${getBFReceiverBranch(s)||'—'}</td>
       <td>${stBadge(s.status||s.raw_status)}</td>
       <td>${dBadge(s.delay_days,s.status)}</td>
       <td><span class="badge b-pur">API</span></td>
@@ -3553,8 +3573,8 @@ function renderTransfers(){
   const trips=new Map();
   list.forEach(s=>{
     const day=getTransferTripDayKey(s);
-    const fromBranch=String(s.previous_branch||'').trim()||'—';
-    const toBranch=String(s.received_branch||s.current_branch||'').trim()||'—';
+    const fromBranch=getBFSenderBranch(s)||'—';
+    const toBranch=getBFReceiverBranch(s)||'—';
     const key=`${day}||${fromBranch}||${toBranch}`;
     if(!trips.has(key))trips.set(key,{key,day,fromBranch,toBranch,items:[]});
     trips.get(key).items.push(s);
@@ -3564,24 +3584,27 @@ function renderTransfers(){
   groups.forEach((g,idx)=>{
     const keyEnc=encodeURIComponent(g.key);
     const opened=branchFollowupExpandedTrips.has(g.key);
+    const delays=g.items.map(x=>Number(x.delay_days||0)).filter(v=>Number.isFinite(v));
+    const minDelay=delays.length?Math.min(...delays):0;
     const maxDelay=g.items.reduce((m,x)=>Math.max(m,Number(x.delay_days||0)),0);
+    const delayBadge=minDelay===maxDelay?dBadge(maxDelay,'delayed'):`<span class="badge b-gold">${minDelay}-${maxDelay} يوم</span>`;
     rows.push(`<tr style="cursor:pointer" onclick="toggleBranchFollowupTrip('${keyEnc}')">
       <td><strong>${opened?'▼':'▶'} رحلة ${idx+1}</strong></td>
       <td>${g.fromBranch}</td>
       <td>${g.toBranch}</td>
       <td><span class="badge b-blu">${g.day}</span></td>
-      <td>${dBadge(maxDelay,'delayed')}</td>
+      <td>${delayBadge}</td>
       <td><span class="badge b-gold">${g.items.length} طلبية</span></td>
     </tr>`);
     if(opened){
       g.items.forEach(s=>{
         rows.push(`<tr>
           <td class="code-cell" style="padding-right:24px">${backofficeOrderLinkHtml(s.tracking_code||'—')}</td>
-          <td>${s.client_name||'—'}</td>
-          <td>${s.captain||'—'}</td>
+          <td>${getBFSenderBranch(s)||'—'}</td>
+          <td>${getBFReceiverBranch(s)||'—'}</td>
           <td>${stBadge(s.status||s.raw_status)}</td>
           <td>${dBadge(s.delay_days,s.status)}</td>
-          <td><span class="badge b-dim">ضمن الرحلة</span></td>
+          <td><span class="badge b-dim">${s.client_name||s.captain||'ضمن الرحلة'}</span></td>
         </tr>`);
       });
     }
@@ -4346,23 +4369,38 @@ async function fetchBranchFollowupRowsByDelay(baseUrl,token,delayDays,maxPages){
 
     for(const item of pageData){
       const code=String(item.code||item.tracking_code||item.order_id||item.ParcelCode||item.id||'').trim();
-      const key=`${delayDays}::${code}`;
+      const fromBranch=String(
+        item.previous_branch||item.previousBranch||item.from_branch||item.fromBranch||item.sender_branch||item.source_branch||item.branch_from||''
+      ).trim();
+      const toBranch=String(
+        item.received_branch||item.receivedBranch||item.to_branch||item.toBranch||item.receiver_branch||item.destination_branch||item.branch_to||item.current_branch||item.currentBranch||''
+      ).trim();
+      const rawDelay=item.delay_days??item.delay??item.delayed_days??item.overdue_days??0;
+      const parsedDelay=parseInt(String(rawDelay).replace(/[^\d-]/g,''),10);
+      const delayDaysValue=Number.isFinite(parsedDelay)?parsedDelay:0;
+      const transferDate=String(item.transfer_date||item.trip_date||item.moved_at||'').trim();
+      const createdAt=String(item.created_at||'').trim();
+      const orderDate=String(item.order_date||item.date||'').trim();
+      const statusText=String(item.status||'').trim();
+      const key=[delayDays,code,fromBranch,toBranch,statusText,delayDaysValue,transferDate,orderDate,createdAt].join('::');
       if(!code||seen.has(key))continue;
       seen.add(key);
       rows.push({
         tracking_code:code,
         client_name:String(item.client_name||item.customer_name||item.name||'—').trim(),
         captain:String(item.captain||item.driver_name||item.driver||item.assignee||'').trim(),
-        status:String(item.status||'').trim(),
-        raw_status:String(item.status||'').trim(),
-        delay_days:parseInt(item.delay_days||0)||0,
-        previous_branch:String(item.previous_branch||item.previousBranch||'').trim(),
-        received_branch:String(item.received_branch||item.receivedBranch||'').trim(),
-        current_branch:String(item.current_branch||item.currentBranch||'').trim(),
-        transfer_date:String(item.transfer_date||item.trip_date||item.moved_at||'').trim(),
-        created_at:String(item.created_at||'').trim(),
+        status:statusText,
+        raw_status:statusText,
+        delay_days:delayDaysValue,
+        previous_branch:fromBranch,
+        from_branch:fromBranch,
+        received_branch:toBranch,
+        to_branch:toBranch,
+        current_branch:toBranch||String(item.current_branch||item.currentBranch||'').trim(),
+        transfer_date:transferDate,
+        created_at:createdAt,
         updated_at:String(item.updated_at||'').trim(),
-        order_date:String(item.order_date||item.date||'').trim(),
+        order_date:orderDate,
       });
     }
     if(!nextCursor||!pageData.length)break;
@@ -4388,9 +4426,10 @@ async function refreshBranchFollowupAPI(force=false){
 
     const dedup=new Map();
     [...companyRows,...transferRows].forEach(r=>{
-      const key=String(r.tracking_code||'');
+      const key=getBFDedupKey(r);
       if(!key)return;
-      if(!dedup.has(key))dedup.set(key,r);
+      const prev=dedup.get(key);
+      if(!prev||Number(r.delay_days||0)>=Number(prev.delay_days||0))dedup.set(key,r);
     });
     const rows=[...dedup.values()];
 
