@@ -5039,6 +5039,35 @@ let apiFetchLog=[];
 let aSortKey='delay_days', aSortDir='desc';
 let apiFilteredData=[], apiFilteredIds=[], apiLastSelectedSid='';
 
+const API_SOURCE_KEYS=['source','origin','created_via','import_source','upload_source','channel','entry_type'];
+const NON_API_SOURCE_TOKENS=['sheet','excel','manual','upload','csv','import','شيت','اكسل','إكسل','يدوي','رفع'];
+const API_SOURCE_TOKENS=['api','api_only','external_api','nawris_api','webhook','endpoint'];
+
+function normalizeSourceToken(v){
+  return String(v||'').trim().toLowerCase();
+}
+function hasAnyToken(value,tokens){
+  const n=normalizeSourceToken(value);
+  if(!n)return false;
+  return tokens.some(t=>n===t||n.includes(t));
+}
+function isAPIOriginRow(row){
+  const sourceValues=API_SOURCE_KEYS
+    .map(k=>row?.[k])
+    .filter(v=>v!==undefined&&v!==null&&String(v).trim()!=='');
+  if(!sourceValues.length)return true; // no explicit source metadata: keep row
+  if(sourceValues.some(v=>hasAnyToken(v,NON_API_SOURCE_TOKENS)))return false;
+  if(sourceValues.some(v=>hasAnyToken(v,API_SOURCE_TOKENS)))return true;
+  return true;
+}
+function isAPIShipmentRecord(s){
+  if(!s||typeof s!=='object')return false;
+  if(!isAPIOriginRow(s))return false;
+  if(String(s.source||'').trim())return true;
+  if(String(s.id||'').startsWith('api_'))return true;
+  return !!s.fetched_at;
+}
+
 // ══════════════════════════════════════════
 // JANZOUR STORES — Isolated view
 // ══════════════════════════════════════════
@@ -5227,8 +5256,13 @@ async function fetchAPIShipments(){
     }
     const seen2=new Set();
     apiShipments=[];
+    let skippedNonApi=0;
 
     for(const [i,r] of rawData.entries()){
+      if(!isAPIOriginRow(r)){
+        skippedNonApi++;
+        continue;
+      }
       const code=String(r.code||r.id||r.tracking_code||r.order_id||r.ParcelCode||('API-'+Date.now()+'-'+i)).trim();
       if(seen2.has(code))continue;seen2.add(code);
 
@@ -5286,7 +5320,7 @@ async function fetchAPIShipments(){
     localStorage.setItem('api_fetch_log',JSON.stringify(apiFetchLog));
 
     // Update UI
-    if(el)el.innerHTML=`<span style="color:var(--grn)">✅ تم جلب ${apiShipments.length} طرد — ${new Date().toLocaleTimeString('ar-LY')}</span>`;
+    if(el)el.innerHTML=`<span style="color:var(--grn)">✅ تم جلب ${apiShipments.length} طرد API${skippedNonApi?` (تم استبعاد ${skippedNonApi} من الشيت/الرفع اليدوي)`:''} — ${new Date().toLocaleTimeString('ar-LY')}</span>`;
     if(dot)dot.className='sync-dot';
     if(stEl)stEl.textContent='متصل — '+apiShipments.length+' طرد';
     document.getElementById('api-last-fetch').textContent='آخر جلب: '+new Date().toLocaleTimeString('ar-LY');
@@ -5328,7 +5362,7 @@ async function fetchAPIShipments(){
     buildJanzourSet();
     refreshJanzourRatesPanels();
     if(document.getElementById('tab-janzour')?.classList.contains('on'))renderJanzour();
-    toast(`✅ ${apiShipments.length} طرد من API — جنزور: ${janzourShipments.length} طرد`,'s');
+    toast(`✅ ${apiShipments.length} طرد من API${skippedNonApi?` (استبعاد ${skippedNonApi} غير API)`:''} — جنزور: ${janzourShipments.length} طرد`,'s');
 
   }catch(e){
     if(el)el.innerHTML=`<span style="color:var(--red)">❌ ${e.message}</span>`;
@@ -6371,7 +6405,8 @@ function loadCachedAPIShipments(){
   try{
     const cached=localStorage.getItem('api_shipments');
     if(cached){
-      apiShipments=JSON.parse(cached);
+      const parsed=JSON.parse(cached);
+      apiShipments=Array.isArray(parsed)?parsed.filter(isAPIShipmentRecord):[];
       apiShipments.forEach(s=>{
         if(s.rep_commission===undefined)s.rep_commission=null;
         if(s.branch_commission===undefined)s.branch_commission=null;
