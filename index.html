@@ -1000,6 +1000,14 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <button class="btn btn-ghost btn-sm" onclick="refreshBranchFollowupAPI(true)">↻ تحديث</button>
       </div>
     </div>
+    <div class="card" style="border-right:3px solid var(--pur);margin-bottom:12px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input class="fi" id="bf-api-url" placeholder="رابط API متابعة الفروع..." dir="ltr" style="min-width:260px;font-size:11px">
+        <input class="fi" id="bf-api-token" type="password" placeholder="Token متابعة الفروع..." dir="ltr" style="min-width:170px;font-size:11px">
+        <button class="btn btn-pur btn-sm" onclick="connectBranchFollowupAPI()">🔌 حفظ اتصال متابعة الفروع</button>
+      </div>
+      <div id="bf-api-status" style="font-size:11px;color:var(--mute);margin-top:6px"></div>
+    </div>
     <div class="fbar" style="margin-bottom:12px">
       <select class="fi" id="bf-mode" onchange="setBranchFollowupTab(this.value)" style="min-width:200px">
         <option value="company">🏢 في الشركة</option>
@@ -2417,6 +2425,8 @@ async function loadAll(){
       if(r.key==='mgrPhone')CFG.mgrPhone=r.value;
       if(r.key==='api_url'&&document.getElementById('api-url'))document.getElementById('api-url').value=r.value;
       if(r.key==='api_token'&&document.getElementById('api-token'))document.getElementById('api-token').value=r.value;
+      if(r.key==='branch_followup_api_url'&&document.getElementById('bf-api-url'))document.getElementById('bf-api-url').value=r.value;
+      if(r.key==='branch_followup_api_token'&&document.getElementById('bf-api-token'))document.getElementById('bf-api-token').value=r.value;
       if(r.key==='couriers_api_url'&&document.getElementById('couriers-api-url'))document.getElementById('couriers-api-url').value=r.value;
       if(r.key==='couriers_api_token'&&document.getElementById('couriers-api-token'))document.getElementById('couriers-api-token').value=r.value;
       if(r.key==='nawris_users'){
@@ -3498,7 +3508,12 @@ function toggleBranchFollowupTrip(encodedKey){
 }
 function renderReturns(){
   // Branch follow-up / "in company": API rows delayed > 1 day.
-  const sourceRows=(branchFollowupRows&&branchFollowupRows.length)?branchFollowupRows:(apiShipments||[]);
+  const sourceRows=Array.isArray(branchFollowupRows)?branchFollowupRows:[];
+  const tbody=document.getElementById('r-tbody');
+  if(!sourceRows.length){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--mute)">لا توجد بيانات متابعة فروع بعد — اضغط "تحديث" في هذه الصفحة</td></tr>';
+    return;
+  }
   const companyRows=sourceRows.filter(s=>{
     const raw=String(s.raw_status||'').trim();
     const rawNorm=raw.replace(/\s+/g,' ');
@@ -3524,7 +3539,6 @@ function renderReturns(){
     if(Number(s.delay_days||0)<minDays)return false;
     return true;
   });
-  const tbody=document.getElementById('r-tbody');
   if(!list.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--mute)">لا توجد بيانات مطابقة للفلاتر الحالية</td></tr>';return;}
   tbody.innerHTML=list.map(s=>`<tr>
     <td class="code-cell">${backofficeOrderLinkHtml(s.tracking_code||'—')}</td>
@@ -3566,7 +3580,12 @@ async function updateRetLoc(id,current){
 function getTransferSts(){return getAllTransferStatuses().map(s=>s.key);}
 function renderTransfers(){
   // Branch follow-up / "in transfer": API rows delayed > 2 days.
-  const sourceRows=(branchFollowupRows&&branchFollowupRows.length)?branchFollowupRows:(apiShipments||[]);
+  const sourceRows=Array.isArray(branchFollowupRows)?branchFollowupRows:[];
+  const tbody=document.getElementById('t-tbody');
+  if(!sourceRows.length){
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--mute)">لا توجد بيانات متابعة فروع بعد — اضغط "تحديث" في هذه الصفحة</td></tr>';
+    return;
+  }
   const minDays=Math.max(0,parseInt(document.getElementById('bf-transfer-days-min')?.value||'3')||3);
   const transferRows=sourceRows.filter(s=>{
     const raw=String(s.raw_status||'').trim();
@@ -3596,7 +3615,6 @@ function renderTransfers(){
     if(toFilter&&toBranch!==toFilter)return false;
     return true;
   });
-  const tbody=document.getElementById('t-tbody');
   if(!list.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--mute)">لا توجد بيانات تحويل مطابقة للفلاتر الحالية</td></tr>';return;}
 
   if(viewMode==='orders'){
@@ -4489,14 +4507,42 @@ async function fetchCouriersFromAPI(){
 function getBranchFollowupAPIConfig(){
   const defaultUrl='https://backoffice.nawris.algoriza.com/external-api/orders/delayed';
   const url=(localStorage.getItem('branch_followup_api_url')||'').trim()
-    ||document.getElementById('api-url2')?.value?.trim()
-    ||document.getElementById('api-url')?.value?.trim()
+    ||document.getElementById('bf-api-url')?.value?.trim()
     ||defaultUrl;
   const token=(localStorage.getItem('branch_followup_api_token')||'').trim()
-    ||document.getElementById('api-token2')?.value?.trim()
-    ||document.getElementById('api-token')?.value?.trim()
+    ||document.getElementById('bf-api-token')?.value?.trim()
     ||'';
   return {url,token};
+}
+
+async function connectBranchFollowupAPI(){
+  let {url,token}=getBranchFollowupAPIConfig();
+  const statusEl=document.getElementById('bf-api-status');
+  if(!url){
+    url='https://backoffice.nawris.algoriza.com/external-api/orders/delayed';
+  }
+  if(!token){
+    toast('أدخل Token متابعة الفروع أولاً','w');
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--gold)">⚠️ أدخل Token متابعة الفروع</span>';
+    return;
+  }
+  if(statusEl)statusEl.textContent='⏳ جارٍ اختبار اتصال متابعة الفروع...';
+  try{
+    const testUrl=withDelayDays(url,1);
+    const res=await apiFetch(testUrl,token);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    localStorage.setItem('branch_followup_api_url',url);
+    localStorage.setItem('branch_followup_api_token',token);
+    await sbUp('settings',[
+      {key:'branch_followup_api_url',value:url},
+      {key:'branch_followup_api_token',value:token}
+    ]);
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--grn)">✅ تم حفظ اتصال متابعة الفروع</span>';
+    toast('✅ تم حفظ إعدادات API متابعة الفروع','s');
+  }catch(e){
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--red)">❌ ${e.message}</span>`;
+    toast('خطأ اتصال API متابعة الفروع: '+e.message,'e');
+  }
 }
 
 function withDelayDays(baseUrl,delayDays){
@@ -4570,14 +4616,14 @@ async function refreshBranchFollowupAPI(force=false){
     try{
       const cfg=await sb('settings','GET',null,'?select=key,value');
       cfg.forEach(r=>{
-        if(!url&&r.key==='api_url')url=r.value||'';
-        if(!token&&r.key==='api_token')token=r.value||'';
+        if(!url&&r.key==='branch_followup_api_url')url=r.value||'';
+        if(!token&&r.key==='branch_followup_api_token')token=r.value||'';
       });
     }catch(_e){}
   }
   if(!url)url='https://backoffice.nawris.algoriza.com/external-api/orders/delayed';
   if(!token){
-    if(force)toast('⚠️ أدخل API Token أولاً ثم أعد التحديث','w');
+    if(force)toast('⚠️ أدخل Token متابعة الفروع أولاً ثم أعد التحديث','w');
     return;
   }
 
@@ -6993,6 +7039,10 @@ function loadCachedAPIShipments(){
     }
     const bfTs=localStorage.getItem('branch_followup_last_fetch_at');
     branchFollowupLastFetchAt=parseInt(bfTs||'0')||0;
+    const bfUrl=localStorage.getItem('branch_followup_api_url')||'';
+    const bfToken=localStorage.getItem('branch_followup_api_token')||'';
+    const bfUrlEl=document.getElementById('bf-api-url');if(bfUrlEl&&bfUrl)bfUrlEl.value=bfUrl;
+    const bfTokenEl=document.getElementById('bf-api-token');if(bfTokenEl&&bfToken)bfTokenEl.value=bfToken;
     // loadAll() runs buildJanzourSet() before apiShipments is filled from cache — refresh subset now
     buildJanzourSet();
     refreshJanzourRatesPanels();
