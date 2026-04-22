@@ -4402,6 +4402,15 @@ function withQueryParam(url,key,value){
   u.searchParams.set(key,String(value));
   return u.toString();
 }
+function withQueryParams(url,params){
+  const u=new URL(cleanApiUrl(url),location.origin);
+  Object.entries(params||{}).forEach(([k,v])=>{
+    if(v!==undefined&&v!==null&&String(v).trim()!==''){
+      u.searchParams.set(k,String(v));
+    }
+  });
+  return u.toString();
+}
 async function apiFetch(baseUrl,token,cursor){
   const cleanToken=token?token.replace(/^(Bearer|Token)\s*/i,'').trim():'';
   const body={url:cleanApiUrl(baseUrl),token:cleanToken};
@@ -4762,17 +4771,18 @@ async function fetchFromAPI(){
     const MAX_DELAY_SCAN_DAYS=2000; // safety cap
     const EMPTY_DAYS_BREAK_STREAK=25; // stop when trailing days are empty
     const MAX_PAGES_PER_DAY=100;
+    const API_PAGE_SIZE=500;
     let totalPages=0;
     let emptyDaysStreak=0;
 
     for(let delayDay=MIN_DELAY_DAYS;delayDay<=MAX_DELAY_SCAN_DAYS;delayDay++){
       let cursor='';
       let dayAdded=0;
-      const dayUrl=`${baseUrl}${sep}delay_days=${delayDay}`;
+      const dayUrl=withQueryParams(`${baseUrl}${sep}delay_days=${delayDay}`,{per_page:API_PAGE_SIZE,limit:API_PAGE_SIZE});
 
       for(let pg=1;pg<=MAX_PAGES_PER_DAY;pg++){
         totalPages++;
-        el.textContent=`⏳ اليوم ${delayDay} - صفحة ${pg}...`;
+        el.textContent=`⏳ اليوم ${delayDay} - صفحة ${pg} (${API_PAGE_SIZE} لكل دفعة)...`;
         try{
           const res=await apiFetch(dayUrl,token,cursor||'');
           if(!res.ok){if(pg>1)break;throw new Error(`HTTP ${res.status}`);}
