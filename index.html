@@ -4185,10 +4185,8 @@ async function fetchFromAPI(){
     const baseUrl=url.replace(/[?&]delay_days=[^&]*/g,'').replace(/[?&]cursor=[^&]*/g,'').replace(/[?&]$/,'');
     const sep=baseUrl.includes('?')?'&':'?';
     const MIN_API_DELAY_DAYS=2;
-    const MAX_API_DELAY_DAYS=120;
+    const MAX_API_DELAY_DAYS=365;
     const MAX_PAGES_PER_DAY=100;
-    const EMPTY_DAYS_BREAK_STREAK=15;
-    let emptyDaysStreak=0;
     let totalPages=0;
 
     for(let delayDay=MIN_API_DELAY_DAYS;delayDay<=MAX_API_DELAY_DAYS;delayDay++){
@@ -4216,9 +4214,7 @@ async function fetchFromAPI(){
         }catch(pgErr){if(pg>1)break;throw pgErr;}
       }
 
-      if(dayAdded===0)emptyDaysStreak++;
-      else emptyDaysStreak=0;
-      if(emptyDaysStreak>=EMPTY_DAYS_BREAK_STREAK)break;
+      // do not early-break on empty days; some APIs have non-contiguous delay buckets
     }
 
     if(!rawData.length){el.textContent='⚠️ لا بيانات في الرد';return;}
@@ -5199,10 +5195,8 @@ async function fetchAPIShipments(){
     const baseUrl=url.replace(/[?&]delay_days=[^&]*/g,'').replace(/[?&]cursor=[^&]*/g,'').replace(/[?&]$/,'');
     const sep=baseUrl.includes('?')?'&':'?';
     const MIN_API_DELAY_DAYS=2;
-    const MAX_API_DELAY_DAYS=120;
+    const MAX_API_DELAY_DAYS=365;
     const MAX_PAGES_PER_DAY=200;
-    const EMPTY_DAYS_BREAK_STREAK=15; // stop early after many empty days in a row
-    let emptyDaysStreak=0;
 
     for(let delayDay=MIN_API_DELAY_DAYS;delayDay<=MAX_API_DELAY_DAYS;delayDay++){
       let nextCursor=null;
@@ -5240,15 +5234,7 @@ async function fetchAPIShipments(){
         if(!pageData.length)break;
       }while(nextCursor&&pageNum<MAX_PAGES_PER_DAY);
 
-      if(dayAdded===0){
-        emptyDaysStreak++;
-      }else{
-        emptyDaysStreak=0;
-      }
-      if(emptyDaysStreak>=EMPTY_DAYS_BREAK_STREAK){
-        console.log(`Stopped early after ${emptyDaysStreak} empty delay days.`);
-        break;
-      }
+      // do not early-break on empty days; some APIs return sparse delay buckets
     }
 
     if(!rawData.length){
