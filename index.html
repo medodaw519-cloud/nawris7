@@ -992,9 +992,11 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <button class="btn btn-ghost btn-sm" onclick="loadReturns();loadTransfers()">↻ تحديث</button>
       </div>
     </div>
-    <div class="segs" style="margin-bottom:12px">
-      <div class="seg on" data-bfseg="company">🏢 في الشركة</div>
-      <div class="seg" data-bfseg="transfers">🔄 التحويلات</div>
+    <div class="fbar" style="margin-bottom:12px">
+      <select class="fi" id="bf-mode" onchange="setBranchFollowupTab(this.value)" style="min-width:200px">
+        <option value="company">🏢 في الشركة</option>
+        <option value="transfers">🔄 التحويلات</option>
+      </select>
     </div>
 
     <div id="bf-company-pane">
@@ -1128,33 +1130,25 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div class="kcard orn"><div class="klbl">في الشركة</div><div class="kval" id="ak-comp">0</div></div>
     </div>
 
-    <!-- Segments -->
-    <div class="segs">
-      <div class="seg on" data-aseg="all">الكل <span class="seg-n" id="asn-all">0</span></div>
-      <div class="seg" data-aseg="mine">👤 مسنداتي <span class="seg-n" id="asn-mine">0</span></div>
-      <div class="seg" data-aseg="driver">🚗 مع المندوب <span class="seg-n" id="asn-driver">0</span></div>
-      <div class="seg" data-aseg="returned">↩️ مرتجع <span class="seg-n" id="asn-returned">0</span></div>
-      <div class="seg" data-aseg="company">🏢 في الشركة <span class="seg-n" id="asn-comp">0</span></div>
-      <div class="seg" data-aseg="late">🔴 متأخرة <span class="seg-n" id="asn-late">0</span></div>
-      <div class="seg manager-only" data-aseg="unassigned">⚠️ غير مسندة <span class="seg-n" id="asn-unassigned">0</span></div>
-    </div>
-
     <!-- Filters -->
     <div class="fbar">
       <input class="fi fi-grow" id="a-q" type="text" placeholder="🔍 بحث بالكود، المتجر، المستلم، المندوب، الفرع..." oninput="renderAPIShipments()">
       <button class="btn btn-ghost btn-sm" onclick="resetAPIFilters()" title="مسح الفلاتر">✕ مسح</button>
     </div>
     <div class="fbar" style="flex-wrap:wrap">
+      <select class="fi" id="a-view-mode" onchange="setAPISeg(this.value)" style="min-width:170px">
+        <option value="all">عرض: الكل</option>
+        <option value="mine">عرض: مسنداتي</option>
+        <option value="driver">عرض: مع المندوب</option>
+        <option value="returned">عرض: مرتجع</option>
+        <option value="company">عرض: في الشركة</option>
+        <option value="late">عرض: متأخرة</option>
+        <option value="unassigned">عرض: غير مسندة</option>
+      </select>
       <select class="fi" id="a-main-type" onchange="renderAPIShipments()" style="min-width:140px">
         <option value="">نوع القائمة</option>
         <option value="with_driver">مع المندوب</option>
         <option value="returned">مرتجع</option>
-      </select>
-      <select class="fi" id="a-fd" onchange="renderAPIShipments()" style="min-width:120px">
-        <option value="">كل التأخير</option>
-        <option value="critical">🔴 +15 يوم</option>
-        <option value="warning">🟡 7-15 يوم</option>
-        <option value="ok">🟢 في الموعد</option>
       </select>
       <select class="fi" id="a-fst" onchange="renderAPIShipments()" style="min-width:120px">
         <option value="">كل الحالات</option>
@@ -1164,19 +1158,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <option value="returned">مرتجع</option>
         <option value="delivered">مُسلَّم</option>
       </select>
-      <select class="fi manager-only" id="a-femp" onchange="renderAPIShipments()" style="min-width:140px"><option value="">كل الموظفين</option></select>
-      <select class="fi" id="a-fcap" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المناديب</option></select>
       <select class="fi" id="a-fbr" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل الفروع</option></select>
-      <select class="fi" id="a-fgov" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المحافظات</option></select>
-      <select class="fi" id="a-fdays" onchange="renderAPIShipments()" style="min-width:130px">
-        <option value="">أيام التأخير</option>
-        <option value="0-5">0-5 أيام</option>
-        <option value="6-10">6-10 أيام</option>
-        <option value="11-15">11-15 يوم</option>
-        <option value="16-30">16-30 يوم</option>
-        <option value="31-60">31-60 يوم</option>
-        <option value="60+">+60 يوم</option>
-      </select>
     </div>
 
     <!-- Table -->
@@ -4459,7 +4441,8 @@ function gTab(id){
 
 function setBranchFollowupTab(mode){
   const target=mode==='transfers'?'transfers':'company';
-  document.querySelectorAll('[data-bfseg]').forEach(el=>el.classList.toggle('on',el.dataset.bfseg===target));
+  const modeEl=document.getElementById('bf-mode');
+  if(modeEl&&modeEl.value!==target)modeEl.value=target;
   const compPane=document.getElementById('bf-company-pane');
   const trPane=document.getElementById('bf-transfers-pane');
   if(compPane)compPane.style.display=target==='company'?'block':'none';
@@ -4485,14 +4468,15 @@ function goShipments(filterType, filterVal){
 // ── Navigate to API shipments tab with filter ──
 function goAPIShipments(filterType, filterVal){
   gTab('shipments');
-  const delayEl=document.getElementById('a-fd');
   const statusEl=document.getElementById('a-fst');
-  if(delayEl)delayEl.value='';
+  const mainTypeEl=document.getElementById('a-main-type');
+  if(mainTypeEl)mainTypeEl.value='';
   if(statusEl)statusEl.value='';
-  if(filterType==='delay'&&delayEl)delayEl.value=filterVal;
+  if(filterType==='delay'&&mainTypeEl){
+    mainTypeEl.value=filterVal==='ok'?'with_driver':'';
+  }
   if(filterType==='status'&&statusEl)statusEl.value=filterVal;
-  apiSeg='all';
-  document.querySelectorAll('.seg[data-aseg]').forEach(el=>el.classList.toggle('on',el.dataset.aseg==='all'));
+  setAPISeg('all');
   renderAPIShipments();
 }
 
@@ -4510,8 +4494,6 @@ function setMasterSeg(s){
 document.addEventListener('click',e=>{
   const ms=e.target.closest('[data-mseg]');
   if(ms){setMasterSeg(ms.dataset.mseg);renderMasterContent();}
-  const bf=e.target.closest('[data-bfseg]');
-  if(bf){setBranchFollowupTab(bf.dataset.bfseg);}
 });
 
 // ══════════════════════════════════════════
@@ -5244,7 +5226,7 @@ function rebuildJanzourShipments(){
 }
 
 function resetAPIFilters(){
-  ['a-q','a-main-type','a-fd','a-fst','a-fdays','a-fcap','a-fbr','a-fgov'].forEach(id=>{
+  ['a-q','a-view-mode','a-main-type','a-fst','a-fbr'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){if(el.tagName==='INPUT')el.value='';else el.selectedIndex=0;}
   });
@@ -5253,15 +5235,12 @@ function resetAPIFilters(){
 
 function setAPISeg(s){
   apiSeg=s;aPage=1;
-  document.querySelectorAll('[data-aseg]').forEach(el=>el.classList.toggle('on',el.dataset.aseg===s));
+  const viewEl=document.getElementById('a-view-mode');
+  if(viewEl&&viewEl.value!==s)viewEl.value=s;
   renderAPIShipments();
 }
 
-// Listen for seg clicks
-document.addEventListener('click',e=>{
-  const seg=e.target.closest('[data-aseg]');
-  if(seg)setAPISeg(seg.dataset.aseg);
-});
+// Seg click listener removed in favor of dropdown list
 
 async function fetchAPIShipments(){
   // Try to get API settings from the upload page inputs or from saved settings
@@ -5566,9 +5545,9 @@ function connectAPI2(){
 }
 
 function updateAPIKPIs(){
-  const crit=apiShipments.filter(s=>cls(s.delay_days)==='critical').length;
-  const warn=apiShipments.filter(s=>cls(s.delay_days)==='warning').length;
-  const ok=apiShipments.filter(s=>cls(s.delay_days)==='ok').length;
+  const crit=apiShipments.filter(s=>cls(s.delay_days,s.status)==='critical').length;
+  const warn=apiShipments.filter(s=>cls(s.delay_days,s.status)==='warning').length;
+  const ok=apiShipments.filter(s=>cls(s.delay_days,s.status)==='ok').length;
   const drv=apiShipments.filter(s=>s.status==='with_driver').length;
   const comp=apiShipments.filter(s=>s.status==='in_company').length;
 
@@ -5581,10 +5560,14 @@ function updateAPIKPIs(){
   document.getElementById('tb-api').textContent=apiShipments.length;
 
   // Segments counts
-  document.getElementById('asn-all').textContent=apiShipments.length;
-  document.getElementById('asn-driver').textContent=drv;
-  document.getElementById('asn-comp').textContent=comp;
-  document.getElementById('asn-late').textContent=apiShipments.filter(s=>cls(s.delay_days,s.status)!=='ok').length;
+  const asnAll=document.getElementById('asn-all');
+  const asnDrv=document.getElementById('asn-driver');
+  const asnComp=document.getElementById('asn-comp');
+  const asnLate=document.getElementById('asn-late');
+  if(asnAll)asnAll.textContent=apiShipments.length;
+  if(asnDrv)asnDrv.textContent=drv;
+  if(asnComp)asnComp.textContent=comp;
+  if(asnLate)asnLate.textContent=apiShipments.filter(s=>cls(s.delay_days,s.status)!=='ok').length;
 
   // Summary card
   const statusGroups={};
@@ -5634,13 +5617,8 @@ function renderAPIShipments(){
   const q=normalizeSearchToken(qRaw);
   const qCode=normalizeCodeToken(qRaw);
   const mainType=document.getElementById('a-main-type')?.value||'';
-  const fd=document.getElementById('a-fd')?.value||'';
   const fst=document.getElementById('a-fst')?.value||'';
-  const fdays=document.getElementById('a-fdays')?.value||'';
-  const fcap=document.getElementById('a-fcap')?.value||'';
   const fbr=document.getElementById('a-fbr')?.value||'';
-  const fgov=document.getElementById('a-fgov')?.value||'';
-  const femp=document.getElementById('a-femp')?.value||'';
   const assignments=getAPIAssignments();
   function updateAPISortHeaderIcons(){
     const keys=['tracking_code','assigned_to','client_name','receiver_name','customer_phone','captain','current_branch','government','area','status','delay_days','cr_result','cr_note'];
@@ -5652,20 +5630,9 @@ function renderAPIShipments(){
   }
 
   // Build filter dropdowns
-  const caps=[...new Set(apiShipments.map(s=>s.captain).filter(Boolean))].sort();
   const brs=[...new Set(apiShipments.map(s=>s.current_branch).filter(Boolean))].sort();
-  const govs=[...new Set(apiShipments.map(s=>s.government).filter(Boolean))].sort();
-  const capEl=document.getElementById('a-fcap');
-  if(capEl&&!fcap){capEl.innerHTML='<option value="">كل المناديب</option>'+caps.map(c=>`<option>${c}</option>`).join('');}
   const brEl=document.getElementById('a-fbr');
   if(brEl&&!fbr){brEl.innerHTML='<option value="">كل الفروع</option>'+brs.map(b=>`<option>${b}</option>`).join('');}
-  const govEl=document.getElementById('a-fgov');
-  if(govEl&&!fgov){govEl.innerHTML='<option value="">كل المحافظات</option>'+govs.map(g=>`<option>${g}</option>`).join('');}
-  const empEl=document.getElementById('a-femp');
-  if(empEl&&!femp){
-    const emps=Object.entries(USERS).filter(([,u])=>u.status!=='inactive').map(([,u])=>u.name);
-    empEl.innerHTML='<option value="">كل الموظفين</option>'+emps.map(e=>`<option>${e}</option>`).join('');
-  }
 
   const myName=CU?.name||'';
   const isManager=CU?.role==='manager';
@@ -5701,22 +5668,9 @@ function renderAPIShipments(){
   if(el('asn-unassigned'))el('asn-unassigned').textContent=apiShipments.filter(s=>!assignments[s.tracking_code]).length;
 
   list=list.filter(s=>{
-    if(fd&&cls(s.delay_days,s.status)!==fd)return false;
     if(fst&&s.status!==fst)return false;
-    if(fcap&&s.captain!==fcap)return false;
     if(fbr&&s.current_branch!==fbr)return false;
-    if(fgov&&s.government!==fgov)return false;
-    if(femp&&assignments[s.tracking_code]!==femp)return false;
     if(mainType&&s.status!==mainType)return false;
-    if(fdays){
-      const d=s.delay_days||0;
-      if(fdays==='0-5'&&(d<0||d>5))return false;
-      if(fdays==='6-10'&&(d<6||d>10))return false;
-      if(fdays==='11-15'&&(d<11||d>15))return false;
-      if(fdays==='16-30'&&(d<16||d>30))return false;
-      if(fdays==='31-60'&&(d<31||d>60))return false;
-      if(fdays==='60+'&&d<61)return false;
-    }
     if(q){
       const hay=normalizeSearchToken(`${s.tracking_code} ${s.client_name} ${s.receiver_name} ${s.captain} ${s.customer_phone} ${s.current_branch} ${s.government} ${s.area}`);
       const codeHay=normalizeCodeToken(`${s.tracking_code||''} ${s.code_pool||''}`);
