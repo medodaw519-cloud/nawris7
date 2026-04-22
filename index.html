@@ -4488,7 +4488,10 @@ async function fetchCouriersFromAPI(){
 
 function getBranchFollowupAPIConfig(){
   const defaultUrl='https://backoffice.nawris.algoriza.com/external-api/orders/delayed';
-  const url=(localStorage.getItem('branch_followup_api_url')||'').trim()||defaultUrl;
+  const url=(localStorage.getItem('branch_followup_api_url')||'').trim()
+    ||document.getElementById('api-url2')?.value?.trim()
+    ||document.getElementById('api-url')?.value?.trim()
+    ||defaultUrl;
   const token=(localStorage.getItem('branch_followup_api_token')||'').trim()
     ||document.getElementById('api-token2')?.value?.trim()
     ||document.getElementById('api-token')?.value?.trim()
@@ -4562,8 +4565,21 @@ async function refreshBranchFollowupAPI(force=false){
   if(!force&&branchFollowupRows.length&&(now-branchFollowupLastFetchAt)<5*60*1000){
     return;
   }
-  const {url,token}=getBranchFollowupAPIConfig();
-  if(!url||!token)return;
+  let {url,token}=getBranchFollowupAPIConfig();
+  if(!url||!token){
+    try{
+      const cfg=await sb('settings','GET',null,'?select=key,value');
+      cfg.forEach(r=>{
+        if(!url&&r.key==='api_url')url=r.value||'';
+        if(!token&&r.key==='api_token')token=r.value||'';
+      });
+    }catch(_e){}
+  }
+  if(!url)url='https://backoffice.nawris.algoriza.com/external-api/orders/delayed';
+  if(!token){
+    if(force)toast('⚠️ أدخل API Token أولاً ثم أعد التحديث','w');
+    return;
+  }
 
   try{
     const baseUrl=url.replace(/[?&]cursor=[^&]*/g,'').replace(/[?&]$/,'');
