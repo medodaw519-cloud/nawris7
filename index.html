@@ -1685,6 +1685,23 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div id="api-status" style="font-size:12px;color:var(--mute);margin-top:6px"></div>
     </div>
 
+    <!-- Couriers API -->
+    <div class="card" style="border-right:3px solid var(--grn)">
+      <div class="ctitle">🚚 ربط API المناديب <span style="font-size:10px;background:var(--grd);color:var(--grn);padding:2px 7px;border-radius:99px">مصدر بيانات المناديب</span></div>
+      <div class="g2">
+        <div>
+          <div class="fg"><label class="fl">رابط API المناديب</label><input class="fi" style="width:100%" id="couriers-api-url" placeholder="https://api.example.com/couriers" dir="ltr"></div>
+          <div class="fg"><label class="fl">Token المناديب</label><input class="fi" style="width:100%" id="couriers-api-token" placeholder="Bearer eyJ..." dir="ltr" type="password"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-ghost" onclick="testCouriersAPI()">🔌 اختبار API المناديب</button>
+          <button class="btn btn-grn" onclick="fetchCouriersFromAPI()">⬇️ جلب المناديب الآن</button>
+          <div style="font-size:11px;color:var(--mute)">ملاحظة: بيانات المناديب في تبويب البيانات الثابتة ستُعرض من هذا الـ API.</div>
+        </div>
+      </div>
+      <div id="couriers-api-status" style="font-size:12px;color:var(--mute);margin-top:6px"></div>
+    </div>
+
     <!-- Static Excel -->
     <div class="card" style="border-right:3px solid var(--blu)">
       <div class="ctitle">📊 رفع البيانات الثابتة من Excel</div>
@@ -1709,10 +1726,10 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         </div>
         <div>
           <div style="font-size:11px;font-weight:700;color:var(--pale);margin-bottom:6px">👤 المناديب</div>
-          <div class="upz" onclick="document.getElementById('fi-drivers').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="dropSt(event,'drivers')">
-            <input type="file" id="fi-drivers" accept=".xlsx,.xls,.csv" onchange="handleSt(event,'drivers')">
-            <div style="font-size:12px;font-weight:700">📂 رفع مناديب.xlsx</div>
-            <div style="font-size:10px;color:var(--mute);margin-top:3px">أعمدة: اسم المندوب، الهاتف، الفرع</div>
+          <div class="upz" style="cursor:default;opacity:.8">
+            <div style="font-size:12px;font-weight:700">📡 المصدر الحالي: API المناديب</div>
+            <div style="font-size:10px;color:var(--mute);margin-top:3px">تم تعطيل الرفع اليدوي للمناديب</div>
+            <div style="margin-top:8px"><button type="button" class="btn btn-grn btn-sm" onclick="fetchCouriersFromAPI()">⬇️ جلب المناديب من API</button></div>
           </div>
           <div id="sts-drivers" style="font-size:11px;color:var(--mute);margin-top:4px"></div>
         </div>
@@ -2077,6 +2094,7 @@ let USERS = loadUsers();
 
 let CU=null, shipments=[], drivers_db=[], branches=[], regions=[], stores=[], contact_results_db=[];
 let returns_data=[], transfers_data=[], contacted=new Set(), checked=new Set();
+let couriersApiCache=[];
 let seg='all', sPage=1, masterSeg='regions', meTable='', meRecord=null, alphaFilter='';
 let PER=25;
 let sSortKey='delay_days';
@@ -2399,6 +2417,8 @@ async function loadAll(){
       if(r.key==='mgrPhone')CFG.mgrPhone=r.value;
       if(r.key==='api_url'&&document.getElementById('api-url'))document.getElementById('api-url').value=r.value;
       if(r.key==='api_token'&&document.getElementById('api-token'))document.getElementById('api-token').value=r.value;
+      if(r.key==='couriers_api_url'&&document.getElementById('couriers-api-url'))document.getElementById('couriers-api-url').value=r.value;
+      if(r.key==='couriers_api_token'&&document.getElementById('couriers-api-token'))document.getElementById('couriers-api-token').value=r.value;
       if(r.key==='nawris_users'){
         try{
           const fresh=JSON.parse(r.value);
@@ -2414,6 +2434,7 @@ async function loadAll(){
         }catch(e){console.warn('users sync parse error',e);}
       }
     });
+    loadCachedCouriersApiData();
     buildDropdowns();refreshAll();
     setSyncState('ok','متصل');
     loadReturns();loadTransfers();loadDbStats();
@@ -3926,16 +3947,21 @@ const MTITLES={regions:'🗺️ المناطق',branches:'🏢 الفروع',dri
 
 async function renderMasterContent(){
   const mc=document.getElementById('master-content');
-  const clearBtn=`<button class="btn btn-red btn-sm" onclick="deleteAllMaster('${masterSeg}')" style="gap:5px">🗑️ مسح الكل</button>`;
-  mc.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><span style="font-size:15px;font-weight:700">${MTITLES[masterSeg]}</span><div style="display:flex;gap:6px">${clearBtn}<button class="btn btn-pur btn-sm" onclick="openMAdd('${masterSeg}')">+ إضافة</button></div></div><div id="mt-wrap"><div style="text-align:center;padding:24px;color:var(--mute)">⏳ تحميل...</div></div>`;
+  const driversReadonly=masterSeg==='drivers';
+  const clearBtn=driversReadonly?'':`<button class="btn btn-red btn-sm" onclick="deleteAllMaster('${masterSeg}')" style="gap:5px">🗑️ مسح الكل</button>`;
+  const addBtn=driversReadonly?'':`<button class="btn btn-pur btn-sm" onclick="openMAdd('${masterSeg}')">+ إضافة</button>`;
+  const driversApiBtn=driversReadonly?`<button class="btn btn-grn btn-sm" onclick="fetchCouriersFromAPI()">⬇️ جلب من API المناديب</button>`:'';
+  const driversBadge=driversReadonly?`<span class="badge b-grn">مصدر البيانات: API المناديب</span>`:'';
+  mc.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><span style="font-size:15px;font-weight:700">${MTITLES[masterSeg]} ${driversBadge}</span><div style="display:flex;gap:6px">${driversApiBtn}${clearBtn}${addBtn}</div></div><div id="mt-wrap"><div style="text-align:center;padding:24px;color:var(--mute)">⏳ تحميل...</div></div>`;
   try{
-    const data=await sb(masterSeg,'GET',null,'?select=*&order=created_at.desc&limit=500');
+    const data=driversReadonly?[...(drivers_db||[])]:await sb(masterSeg,'GET',null,'?select=*&order=created_at.desc&limit=500');
     const flds=MF[masterSeg]||[];
     const labels={name:'الاسم',code:'الكود',description:'الوصف',manager_name:'المدير',manager_phone:'هاتف المدير',address:'العنوان',phone:'الهاتف',phone2:'هاتف2',vehicle_type:'وسيلة النقل'};
-    document.getElementById('mt-wrap').innerHTML=`<div style="font-size:11px;color:var(--mute);margin-bottom:8px">${data.length} سجل</div><div class="tw"><table><thead><tr>${flds.map(f=>`<th>${labels[f.k]||f.k}</th>`).join('')}<th>إجراء</th></tr></thead><tbody>${data.length?data.map(r=>`<tr>${flds.map(f=>`<td>${r[f.k]||'—'}</td>`).join('')}<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openMEdit('${masterSeg}','${r.id}')">✏️</button><button class="btn btn-red btn-sm" onclick="deleteMaster('${masterSeg}','${r.id}')">🗑️</button></div></td></tr>`).join(''):'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mute)">لا بيانات</td></tr>'}</tbody></table></div>`;
+    document.getElementById('mt-wrap').innerHTML=`<div style="font-size:11px;color:var(--mute);margin-bottom:8px">${data.length} سجل</div><div class="tw"><table><thead><tr>${flds.map(f=>`<th>${labels[f.k]||f.k}</th>`).join('')}<th>إجراء</th></tr></thead><tbody>${data.length?data.map(r=>`<tr>${flds.map(f=>`<td>${r[f.k]||'—'}</td>`).join('')}<td>${driversReadonly?'<span style="color:var(--mute)">—</span>':`<div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openMEdit('${masterSeg}','${r.id}')">✏️</button><button class="btn btn-red btn-sm" onclick="deleteMaster('${masterSeg}','${r.id}')">🗑️</button></div>`}</td></tr>`).join(''):'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--mute)">لا بيانات</td></tr>'}</tbody></table></div>`;
   }catch(e){document.getElementById('mt-wrap').innerHTML=`<div style="color:var(--red);padding:16px">خطأ: ${e.message}</div>`;}
 }
 async function deleteAllMaster(table){
+  if(table==='drivers'){toast('بيانات المناديب تُدار من API المناديب','w');return;}
   const title=MTITLES[table]||table;
   if(!confirm(`⚠️ هل تريد حذف جميع سجلات "${title}"؟\nهذا الإجراء لا يمكن التراجع عنه!`))return;
   try{
@@ -3956,12 +3982,14 @@ async function deleteAllMaster(table){
   }catch(e){toast('خطأ في الحذف: '+e.message,'e');}
 }
 function openMAdd(table){
+  if(table==='drivers'){toast('إضافة المناديب يدويًا متوقفة — استخدم API المناديب','w');return;}
   meTable=table;meRecord=null;
   document.getElementById('me-title').textContent='إضافة — '+MTITLES[table];
   document.getElementById('me-body').innerHTML=(MF[table]||[]).map(f=>`<div class="fg"><label class="fl">${f.l}${f.req?' *':''}</label><input class="fi" style="width:100%" id="mf-${f.k}" value="" placeholder="${f.l}"></div>`).join('');
   document.getElementById('me-modal').classList.add('on');
 }
 async function openMEdit(table,id){
+  if(table==='drivers'){toast('تعديل المناديب يدويًا متوقف — المصدر API','w');return;}
   meTable=table;
   try{
     const data=await sb(table,'GET',null,`?id=eq.${id}&select=*`);
@@ -3984,6 +4012,7 @@ async function saveMasterRecord(){
   }catch(e){toast('خطأ: '+e.message,'e');}
 }
 async function deleteMaster(table,id){
+  if(table==='drivers'){toast('حذف المناديب يدويًا متوقف — المصدر API','w');return;}
   if(!confirm('حذف هذا السجل؟'))return;
   try{
     const r=await fetch(`${SB}/rest/v1/${table}?id=eq.${id}`,{method:'DELETE',headers:H});
@@ -4349,6 +4378,104 @@ async function apiFetch(baseUrl,token,cursor){
   return r;
 }
 
+function mapCouriersFromApiPayload(payload){
+  const candidates=Array.isArray(payload)
+    ? payload
+    : (payload?.couriers||payload?.drivers||payload?.data||payload?.results||payload?.items||[]);
+  if(!Array.isArray(candidates))return [];
+  const seen=new Set();
+  const mapped=[];
+  for(const row of candidates){
+    const name=String(
+      row?.name||row?.full_name||row?.driver_name||row?.courier_name||row?.employee_name||row?.captain||row?.['اسم المندوب']||''
+    ).trim();
+    if(!name)continue;
+    const phoneRaw=String(
+      row?.phone||row?.mobile||row?.phone_number||row?.driver_phone||row?.courier_phone||row?.['هاتف المندوب']||''
+    ).trim();
+    const phone2Raw=String(row?.phone2||row?.secondary_phone||row?.alt_phone||'').trim();
+    const key=[normalizePersonName(name),normPhone(phoneRaw)||phoneRaw].join('::');
+    if(seen.has(key))continue;
+    seen.add(key);
+    mapped.push({
+      id:row?.id||row?.driver_id||row?.courier_id||row?.employee_id||null,
+      name,
+      phone:normPhone(phoneRaw)||phoneRaw,
+      phone2:normPhone(phone2Raw)||phone2Raw||null,
+      vehicle_type:String(row?.vehicle_type||row?.vehicle||row?.transport_type||'').trim()||null,
+      branch:String(row?.branch||row?.branch_name||row?.current_branch||row?.['الفرع']||'').trim()||null,
+      source:'couriers_api'
+    });
+  }
+  return mapped;
+}
+
+function applyCouriersApiData(list,{persist=true}={}){
+  couriersApiCache=Array.isArray(list)?list:[];
+  if(couriersApiCache.length)drivers_db=[...couriersApiCache];
+  if(persist){
+    localStorage.setItem('couriers_api_drivers_cache',JSON.stringify(couriersApiCache));
+  }
+}
+
+function loadCachedCouriersApiData(){
+  try{
+    const raw=localStorage.getItem('couriers_api_drivers_cache');
+    if(!raw)return false;
+    const parsed=JSON.parse(raw);
+    if(!Array.isArray(parsed)||!parsed.length)return false;
+    applyCouriersApiData(parsed,{persist:false});
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function testCouriersAPI(){
+  const url=document.getElementById('couriers-api-url')?.value?.trim();
+  const token=document.getElementById('couriers-api-token')?.value?.trim();
+  const el=document.getElementById('couriers-api-status');
+  if(!url){toast('أدخل رابط API المناديب','e');return;}
+  el.textContent='⏳ جارٍ اختبار API المناديب...';
+  try{
+    const res=await apiFetch(url,token);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const payload=await res.json();
+    const mapped=mapCouriersFromApiPayload(payload);
+    el.innerHTML=`<span style="color:var(--grn)">✅ API المناديب يعمل — ${mapped.length} مندوب</span>`;
+    await sbUp('settings',[{key:'couriers_api_url',value:url},{key:'couriers_api_token',value:token||''}]);
+    toast('✅ اتصال API المناديب ناجح','s');
+  }catch(e){
+    el.innerHTML=`<span style="color:var(--red)">❌ ${e.message}</span>`;
+  }
+}
+
+async function fetchCouriersFromAPI(){
+  const url=document.getElementById('couriers-api-url')?.value?.trim();
+  const token=document.getElementById('couriers-api-token')?.value?.trim();
+  const el=document.getElementById('couriers-api-status');
+  if(!url){toast('أدخل رابط API المناديب أولاً','e');return;}
+  el.textContent='⏳ جارٍ جلب بيانات المناديب...';
+  try{
+    const res=await apiFetch(url,token);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const payload=await res.json();
+    const mapped=mapCouriersFromApiPayload(payload);
+    if(!mapped.length)throw new Error('لا توجد بيانات مناديب صالحة في الرد');
+    applyCouriersApiData(mapped,{persist:true});
+    await sbUp('settings',[{key:'couriers_api_url',value:url},{key:'couriers_api_token',value:token||''}]);
+    if(document.getElementById('sts-drivers'))document.getElementById('sts-drivers').innerHTML=`<span style="color:var(--grn)">✅ تم تحديث ${mapped.length} مندوب من API</span>`;
+    el.innerHTML=`<span style="color:var(--grn)">✅ تم جلب ${mapped.length} مندوب وتفعيلهم كمصدر المناديب</span>`;
+    if(masterSeg==='drivers'&&document.getElementById('tab-master')?.classList.contains('on'))renderMasterContent();
+    renderDrivers();
+    renderAPIShipments();
+    toast(`✅ تم جلب ${mapped.length} مندوب من API`,'s');
+  }catch(e){
+    el.innerHTML=`<span style="color:var(--red)">❌ ${e.message}</span>`;
+    toast('خطأ API المناديب: '+e.message,'e');
+  }
+}
+
 function getBranchFollowupAPIConfig(){
   const defaultUrl='https://backoffice.nawris.algoriza.com/external-api/orders/delayed';
   const url=(localStorage.getItem('branch_followup_api_url')||'').trim()||defaultUrl;
@@ -4568,7 +4695,7 @@ async function loadDbStats(){
   try{
     const [s,d,b,r,ct]=await Promise.all([sbCount('shipments'),sbCount('drivers'),sbCount('branches'),sbCount('returns'),sbCount('contacted_log')]);
     document.getElementById('db-s').textContent=s;
-    document.getElementById('db-d').textContent=d;
+    document.getElementById('db-d').textContent=couriersApiCache.length||d;
     document.getElementById('db-b').textContent=b;
     document.getElementById('db-r').textContent=r;
     document.getElementById('db-ct').textContent=ct;
