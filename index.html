@@ -5791,11 +5791,24 @@ async function fetchAPIShipments(){
       return alphaNumeric||candidates[0];
     };
     const fetchPageWithRetry=async(baseUrl,cursorVal='',retries=2)=>{
+      const cursorStr=String(cursorVal||'').trim();
+      const withCursorInQuery=cursorStr
+        ? `${baseUrl}${baseUrl.includes('?')?'&':'?'}cursor=${encodeURIComponent(cursorStr)}`
+        : baseUrl;
+      const requestModes=cursorStr
+        ? [
+            {url:baseUrl,cursor:cursorStr,label:'payload-cursor'},
+            {url:withCursorInQuery,cursor:'',label:'query-cursor'},
+            {url:withCursorInQuery,cursor:cursorStr,label:'payload+query-cursor'}
+          ]
+        : [{url:baseUrl,cursor:'',label:'first-page'}];
       let lastError=null;
       for(let attempt=0;attempt<=retries;attempt++){
-        const res=await apiFetch(baseUrl,token,cursorVal);
-        if(res.ok)return res;
-        lastError=new Error(`HTTP ${res.status}`);
+        for(const mode of requestModes){
+          const res=await apiFetch(mode.url,token,mode.cursor);
+          if(res.ok)return res;
+          lastError=new Error(`HTTP ${res.status} (${mode.label})`);
+        }
         if(attempt<retries){
           await new Promise(resolve=>setTimeout(resolve,350*(attempt+1)));
         }
