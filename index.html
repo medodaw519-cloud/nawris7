@@ -2595,6 +2595,7 @@ async function loadReturns(){
   const EXTERNAL_DELAYED_API=cfg.url;
   const MIN_COMPANY_DELAY=2;
   try{
+    setBranchApiStatus('⏳ جارٍ جلب بيانات "في الشركة"...');
     // Branch follow-up "في الشركة": start delay from 2 days.
     const token=cfg.token;
     const res=await apiFetch(`${EXTERNAL_DELAYED_API}?delay_days=${MIN_COMPANY_DELAY}`,token);
@@ -2618,13 +2619,16 @@ async function loadReturns(){
       drivers:{name:r.captain||r.driver_name||r.driver||'—'}
     }));
     renderReturns();
+    setBranchApiStatus(`✅ في الشركة: تم جلب ${returns_data.length} سجل (من ${rows.length} من API)`,`ok`);
   }catch(e){
     console.warn('returns api',e);
     try{
       returns_data=await sb('returns','GET',null,'?select=*,shipments(tracking_code,customer_name),drivers(name),branches(name)&order=created_at.desc&limit=500');
       renderReturns();
+      setBranchApiStatus(`⚠️ في الشركة: fallback محلي (${returns_data.length} سجل)`,`info`);
     }catch(err){
       console.warn('returns fallback',err);
+      setBranchApiStatus('❌ فشل جلب بيانات "في الشركة"','err');
     }
   }
 }
@@ -2635,6 +2639,7 @@ async function loadTransfers(){
   const table=document.getElementById('transfers-table');
   if(table)table.innerHTML='<div class="tr-loading">⏳ جارٍ تحميل التحويلات...</div>';
   try{
+    setBranchApiStatus('⏳ جارٍ جلب بيانات "التحويلات"...');
     // Transfers follow-up: start delay from 3 days.
     const token=cfg.token;
     const res=await apiFetch(`${EXTERNAL_DELAYED_API}?delay_days=${MIN_TRANSFER_DELAY}`,token);
@@ -2662,6 +2667,7 @@ async function loadTransfers(){
     transferTripOrder=Object.keys(transferTripGroups).sort((a,b)=>String(b).localeCompare(String(a),'ar'));
     transferExpandedTrips=new Set();
     renderTransfers();
+    setBranchApiStatus(`✅ التحويلات: تم جلب ${transfers_data.length} سجل (من ${apiRows.length} من API)`,`ok`);
   }catch(e){
     console.warn('transfers api',e);
     try{
@@ -2683,10 +2689,12 @@ async function loadTransfers(){
       transferTripOrder=Object.keys(transferTripGroups).sort((a,b)=>String(b).localeCompare(String(a),'ar'));
       transferExpandedTrips=new Set();
       renderTransfers();
+      setBranchApiStatus(`⚠️ التحويلات: fallback محلي (${transfers_data.length} سجل)`,`info`);
     }catch(err){
       console.warn('transfers fallback',err);
       if(table)table.innerHTML='<div class="tr-error">❌ تعذر تحميل التحويلات</div>';
       toast('خطأ في تحميل التحويلات: '+(err.message||e.message),'e');
+      setBranchApiStatus('❌ فشل جلب بيانات "التحويلات"','err');
     }
   }
 }
