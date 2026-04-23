@@ -2590,6 +2590,28 @@ async function loadShipments(){
   }catch(e){setSyncState('err','خطأ');toast('خطأ: '+e.message,'e');}
 }
 
+async function fetchAllBranchDelayedRows(baseUrl,token,minDelay){
+  const cleanBase=String(baseUrl||'').replace(/[?&]cursor=[^&]*/g,'').replace(/[?&]$/,'');
+  let allRows=[];
+  let nextCursor='';
+  let page=0;
+  const MAX_PAGES=300;
+  do{
+    page++;
+    const u=new URL(cleanBase,window.location.origin);
+    u.searchParams.set('delay_days',String(minDelay));
+    if(nextCursor)u.searchParams.set('cursor',String(nextCursor));
+    const res=await apiFetch(u.toString(),token,nextCursor||'');
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const json=await res.json();
+    const rows=Array.isArray(json)?json:(Array.isArray(json?.data)?json.data:json?.orders||json?.shipments||[]);
+    allRows=allRows.concat(rows||[]);
+    nextCursor=json?.meta?.next_cursor||json?.next_cursor||'';
+    if(!(rows&&rows.length))break;
+  }while(nextCursor&&page<MAX_PAGES);
+  return allRows;
+}
+
 async function loadReturns(){
   const cfg=getBranchApiConfig();
   const EXTERNAL_DELAYED_API=cfg.url;
@@ -2598,10 +2620,7 @@ async function loadReturns(){
     setBranchApiStatus('⏳ جارٍ جلب بيانات "في الشركة"...');
     // Branch follow-up "في الشركة": start delay from 2 days.
     const token=cfg.token;
-    const res=await apiFetch(`${EXTERNAL_DELAYED_API}?delay_days=${MIN_COMPANY_DELAY}`,token);
-    if(!res.ok)throw new Error(`HTTP ${res.status}`);
-    const payload=await res.json();
-    const rows=Array.isArray(payload)?payload:(Array.isArray(payload?.data)?payload.data:[]);
+    const rows=await fetchAllBranchDelayedRows(EXTERNAL_DELAYED_API,token,MIN_COMPANY_DELAY);
     const inCompanyRows=rows.filter(r=>{
       const d=parseInt(r?.delay_days||r?.delay||0)||0;
       const s=String(r?.status||'').toLowerCase();
@@ -2642,10 +2661,7 @@ async function loadTransfers(){
     setBranchApiStatus('⏳ جارٍ جلب بيانات "التحويلات"...');
     // Transfers follow-up: start delay from 3 days.
     const token=cfg.token;
-    const res=await apiFetch(`${EXTERNAL_DELAYED_API}?delay_days=${MIN_TRANSFER_DELAY}`,token);
-    if(!res.ok)throw new Error(`HTTP ${res.status}`);
-    const payload=await res.json();
-    const apiRows=Array.isArray(payload)?payload:(Array.isArray(payload?.data)?payload.data:[]);
+    const apiRows=await fetchAllBranchDelayedRows(EXTERNAL_DELAYED_API,token,MIN_TRANSFER_DELAY);
     const transferRows=apiRows.filter(r=>{
       const d=parseInt(r?.delay_days||r?.delay||0)||0;
       const s=String(r?.status||'').toLowerCase();
