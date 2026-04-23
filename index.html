@@ -6280,20 +6280,55 @@ function flashAPIRow(sid){
   setTimeout(()=>{row.style.outline=prev||'';row.style.outlineOffset='';},900);
 }
 
-function bulkWA_API(){
+async function bulkWA_API(){
   if(!apiChecked.size){toast('حدد طروداً أولاً','w');return;}
-  let count=0;
-  [...apiChecked].forEach(sid=>{
-    const s=apiShipments.find(x=>x.id===sid);
-    if(!s)return;
-    const ph=normPhone(s.customer_phone||'');
-    if(ph){
-      const msg=`السلام عليكم ${s.customer_name||''}\n🕊️ ${CFG.company}\n\nبخصوص طردكم رقم: ${s.tracking_code}\nالتأخير: ${s.delay_days} يوم\n\n— ${CFG.company}`;
-      window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');
-      count++;
-    }
-  });
-  toast(`💬 تم فتح واتساب لـ ${count} عميل`,'s');
+  const selected=[...apiChecked]
+    .map(id=>apiShipments.find(s=>String(s.id)===String(id)))
+    .filter(Boolean);
+  if(!selected.length){toast('لا توجد طرود مطابقة للتحديد الحالي','w');return;}
+
+  const captains=[...new Set(selected.map(s=>normalizeIdentityText(s.captain||'')).filter(Boolean))];
+  if(captains.length!==1){
+    toast('لازم يكون كل التحديد لنفس المندوب قبل إرسال واتساب','e');
+    return;
+  }
+
+  const captainKey=captains[0];
+  const captainLabel=String(selected.find(s=>normalizeIdentityText(s.captain||'')===captainKey)?.captain||selected[0].captain||'').trim()||'المندوب';
+
+  // Strict captain phone resolution: only from the same selected captain identity.
+  const phoneFromSelected=selected
+    .filter(s=>normalizeIdentityText(s.captain||'')===captainKey)
+    .map(s=>normPhone(s.captain_phone||s.driver_phone||''))
+    .find(Boolean)||'';
+  const phoneFromDrivers=(drivers_db||[])
+    .filter(d=>normalizeIdentityText(d?.name||'')===captainKey)
+    .map(d=>normPhone(d?.phone||''))
+    .find(Boolean)||'';
+  const phoneFromCaptainsCache=(apiCaptainsCache||[])
+    .filter(c=>normalizeIdentityText(c?.name||'')===captainKey)
+    .map(c=>normPhone(c?.phone||''))
+    .find(Boolean)||'';
+  const captainPhone=phoneFromSelected||phoneFromDrivers||phoneFromCaptainsCache||'';
+  if(!captainPhone){
+    toast(`لا يوجد رقم واتساب محفوظ للمندوب: ${captainLabel}`,'e');
+    return;
+  }
+
+  const codes=[...new Set(selected.map(s=>String(s.tracking_code||'').trim()).filter(Boolean))];
+  const msg=`السلام عليكم ${captainLabel}\n🕊️ ${CFG.company}\n\nالأكواد المحددة للمتابعة (${codes.length}):\n${codes.map(c=>`• ${c}`).join('\n')}\n\nيرجى المتابعة والتأكيد.\n— ${CFG.company}`;
+  openWAUrl(captainPhone,msg);
+
+  let updated=0;
+  for(const s of selected){
+    const prevNote=getCR(s.id).note||'';
+    const ok=await saveCR(s.id,'contacted',prevNote);
+    if(ok)updated++;
+  }
+  renderAPIShipments();
+  renderJanzour();
+  renderAssignStats();
+  toast(`💬 تم إرسال ${codes.length} كود إلى ${captainLabel} وتحديث ${updated} إلى "تم التواصل"`,'s');
 }
 
 async function moveAPIToMain(s){
