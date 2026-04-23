@@ -5361,7 +5361,7 @@ async function fetchAPIShipments(){
 
       let newCount=0;
       for(const item of pageData){
-        const code=String(item.code||item.id||item.tracking_code||'').trim();
+        const code=String(item.tracking_code||item.ParcelCode||item.code||item.id||'').trim();
         if(code&&!seen.has(code)){seen.add(code);rawData.push(item);newCount++;}
       }
       console.log(`Page ${pageNum}: ${pageData.length} items, ${newCount} new, total: ${rawData.length}, next_cursor: ${nextCursor?'yes':'no'}`);
@@ -5395,7 +5395,7 @@ async function fetchAPIShipments(){
     apiShipments=[];
 
     for(const [i,r] of rawData.entries()){
-      const code=String(r.code||r.id||r.tracking_code||r.order_id||r.ParcelCode||('API-'+Date.now()+'-'+i)).trim();
+      const code=String(r.tracking_code||r.ParcelCode||r.code||r.id||r.order_id||('API-'+Date.now()+'-'+i)).trim();
       if(seen2.has(code))continue;seen2.add(code);
 
       const days=parseInt(r.delay_days||r[delayField]||r['عدد الايام المتأخرة']||r['التأخير']||0)||0;
