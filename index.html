@@ -4597,14 +4597,29 @@ async function uploadShipments(rows,forceStatus){
 const PROXY='https://misty-wildflower-54d1.medodaw519.workers.dev';
 async function apiFetch(baseUrl,token,cursor){
   const cleanToken=token?token.replace(/^(Bearer|Token)\s*/i,'').trim():'';
-  const body={url:baseUrl,token:cleanToken};
+  const reqUrl=String(baseUrl||'').trim();
+  // For Algoriza backoffice API, send token exactly as X-API-TOKEN (as required by curl).
+  if(reqUrl.includes('backoffice.nawris.algoriza.com')){
+    try{
+      const u=new URL(reqUrl,window.location.origin);
+      if(cursor)u.searchParams.set('cursor',String(cursor));
+      return await fetch(u.toString(),{
+        method:'GET',
+        headers:{
+          'Accept':'application/json',
+          ...(cleanToken?{'X-API-TOKEN':cleanToken}:{})
+        },
+        credentials:'omit'
+      });
+    }catch(_){}
+  }
+  const body={url:reqUrl,token:cleanToken};
   if(cursor)body.cursor=cursor;
-  const r=await fetch(PROXY,{
+  return await fetch(PROXY,{
     method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json'},
     body:JSON.stringify(body)
   });
-  return r;
 }
 function getBranchApiConfig(){
   const defaultUrl='https://backoffice.nawris.algoriza.com/external-api/orders/delayed';
