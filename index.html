@@ -3764,6 +3764,7 @@ function toggleTrip(tripId){
 }
 
 function createTripChildren(tripId,tripShipments){
+  const BACKOFFICE_ORDER_BASE='https://backoffice.nawris.algoriza.com/orders/';
   const children=document.createElement('div');
   children.id=`trip-${tripId}`;
   children.className='trip-children';
@@ -3774,7 +3775,19 @@ function createTripChildren(tripId,tripShipments){
     shipmentRow.className='shipment-row';
 
     const code=document.createElement('div');
-    code.textContent=s.shipment_code||'—';
+    const codeVal=String(s.shipment_code||'').trim();
+    if(codeVal&&codeVal!=='—'){
+      const codeLink=document.createElement('a');
+      codeLink.href=BACKOFFICE_ORDER_BASE+encodeURIComponent(codeVal);
+      codeLink.target='_blank';
+      codeLink.rel='noopener noreferrer';
+      codeLink.className='bo-order-link';
+      codeLink.dir='ltr';
+      codeLink.textContent=codeVal;
+      code.appendChild(codeLink);
+    }else{
+      code.textContent='—';
+    }
 
     const customer=document.createElement('div');
     customer.textContent=s.customer_name||'—';
