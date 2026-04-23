@@ -162,6 +162,12 @@ table td:first-child{font-family:var(--mono);font-feature-settings:"tnum"}
 .sb-subitem{padding:8px 12px;border-radius:10px;font-size:13px;font-weight:700;color:rgba(255,255,255,.72);cursor:pointer;transition:all .2s ease}
 .sb-subitem:hover{background:rgba(255,255,255,.1);color:#fff}
 .sb-subitem.on{background:rgba(14,165,233,.25);color:#fff}
+.flt-drawer-overlay{position:fixed;inset:0;background:rgba(2,6,23,.45);z-index:520;display:none}
+.flt-drawer{position:fixed;top:0;left:0;bottom:0;width:min(340px,92vw);background:var(--bg3);border-left:1px solid var(--rim);box-shadow:8px 0 28px rgba(2,6,23,.28);z-index:521;transform:translateX(-104%);transition:transform .24s ease;display:flex;flex-direction:column}
+.flt-drawer.on{transform:translateX(0)}
+.flt-drawer-overlay.on{display:block}
+.flt-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--rim)}
+.flt-drawer-body{padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
 .sb-divider{height:1px;background:rgba(155,109,255,.1);margin:6px 16px}
 .sb-section{font-size:11px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.85px;padding:16px 18px 6px;font-family:var(--mono)}
 .sb-footer{padding:14px 16px;border-top:1px solid rgba(155,109,255,.12);display:flex;flex-direction:column;gap:10px;background:rgba(0,0,0,.2)}
@@ -1156,38 +1162,46 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
 
     <!-- Filters -->
     <div class="fbar">
-      <input class="fi fi-grow" id="a-q" type="text" placeholder="🔍 بحث بالكود، المتجر، المستلم، المندوب، الفرع..." oninput="renderAPIShipments()">
-      <button class="btn btn-ghost btn-sm" onclick="resetAPIFilters()" title="مسح الفلاتر">✕ مسح</button>
+      <button class="btn btn-ghost btn-sm" onclick="openApiFiltersDrawer()">⚙️ تصفية</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetAPIFilters();renderAPIShipments();" title="مسح الفلاتر">✕ مسح</button>
     </div>
-    <div class="fbar" style="flex-wrap:wrap">
-      <select class="fi" id="a-fd" onchange="renderAPIShipments()" style="min-width:120px">
-        <option value="">كل التأخير</option>
-        <option value="critical">🔴 +15 يوم</option>
-        <option value="warning">🟡 7-15 يوم</option>
-        <option value="ok">🟢 في الموعد</option>
-      </select>
-      <select class="fi" id="a-fst" onchange="renderAPIShipments()" style="min-width:120px">
-        <option value="">كل الحالات</option>
-        <option value="with_driver">مع المندوب</option>
-        <option value="in_company">في الشركة</option>
-        <option value="delayed">متأخر</option>
-        <option value="returned">مرتجع</option>
-        <option value="delivered">مُسلَّم</option>
-      </select>
-      <select class="fi manager-only" id="a-femp" onchange="renderAPIShipments()" style="min-width:140px"><option value="">كل الموظفين</option></select>
-      <select class="fi" id="a-fcap" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المناديب</option></select>
-      <select class="fi" id="a-fbr" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل الفروع</option></select>
-      <select class="fi" id="a-fgov" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المحافظات</option></select>
-      <select class="fi" id="a-fdays" onchange="renderAPIShipments()" style="min-width:130px">
-        <option value="">أيام التأخير</option>
-        <option value="0-5">0-5 أيام</option>
-        <option value="6-10">6-10 أيام</option>
-        <option value="11-15">11-15 يوم</option>
-        <option value="16-30">16-30 يوم</option>
-        <option value="31-60">31-60 يوم</option>
-        <option value="60+">+60 يوم</option>
-      </select>
-    </div>
+    <div class="flt-drawer-overlay" id="api-filters-overlay" onclick="closeApiFiltersDrawer()"></div>
+    <aside class="flt-drawer" id="api-filters-drawer" aria-hidden="true">
+      <div class="flt-drawer-head">
+        <strong style="font-size:14px">تصفية الطرود</strong>
+        <button class="btn btn-ghost btn-sm" onclick="closeApiFiltersDrawer()">✕ إغلاق</button>
+      </div>
+      <div class="flt-drawer-body">
+        <input class="fi fi-grow" id="a-q" type="text" placeholder="🔍 بحث بالكود، المتجر، المستلم، المندوب، الفرع..." oninput="renderAPIShipments()">
+        <select class="fi" id="a-fd" onchange="renderAPIShipments()" style="min-width:120px">
+          <option value="">كل التأخير</option>
+          <option value="critical">🔴 +15 يوم</option>
+          <option value="warning">🟡 7-15 يوم</option>
+          <option value="ok">🟢 في الموعد</option>
+        </select>
+        <select class="fi" id="a-fst" onchange="renderAPIShipments()" style="min-width:120px">
+          <option value="">كل الحالات</option>
+          <option value="with_driver">مع المندوب</option>
+          <option value="in_company">في الشركة</option>
+          <option value="delayed">متأخر</option>
+          <option value="returned">مرتجع</option>
+          <option value="delivered">مُسلَّم</option>
+        </select>
+        <select class="fi manager-only" id="a-femp" onchange="renderAPIShipments()" style="min-width:140px"><option value="">كل الموظفين</option></select>
+        <select class="fi" id="a-fcap" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المناديب</option></select>
+        <select class="fi" id="a-fbr" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل الفروع</option></select>
+        <select class="fi" id="a-fgov" onchange="renderAPIShipments()" style="min-width:120px"><option value="">كل المحافظات</option></select>
+        <select class="fi" id="a-fdays" onchange="renderAPIShipments()" style="min-width:130px">
+          <option value="">أيام التأخير</option>
+          <option value="0-5">0-5 أيام</option>
+          <option value="6-10">6-10 أيام</option>
+          <option value="11-15">11-15 يوم</option>
+          <option value="16-30">16-30 يوم</option>
+          <option value="31-60">31-60 يوم</option>
+          <option value="60+">+60 يوم</option>
+        </select>
+      </div>
+    </aside>
 
     <!-- Table -->
     <div style="background:var(--bg3);border:1px solid var(--rim);border-radius:var(--r);overflow:hidden">
@@ -4458,13 +4472,30 @@ function setShipmentsMenuOpen(open){
 
 function openShipmentsMenuFilter(status){
   gTab('shipments');
-  setSeg('all');
-  const statusEl=document.getElementById('s-fst');
+  setAPISeg('all');
+  const statusEl=document.getElementById('a-fst');
   if(statusEl)statusEl.value=status||'';
   document.querySelectorAll('#nav-tabs .sb-subitem[data-ship-filter-menu]').forEach(el=>{
     el.classList.toggle('on',el.dataset.shipFilterMenu===status);
   });
-  renderShipments();
+  renderAPIShipments();
+}
+
+function openApiFiltersDrawer(){
+  const drawer=document.getElementById('api-filters-drawer');
+  const overlay=document.getElementById('api-filters-overlay');
+  if(!drawer||!overlay)return;
+  drawer.classList.add('on');
+  drawer.setAttribute('aria-hidden','false');
+  overlay.classList.add('on');
+}
+function closeApiFiltersDrawer(){
+  const drawer=document.getElementById('api-filters-drawer');
+  const overlay=document.getElementById('api-filters-overlay');
+  if(!drawer||!overlay)return;
+  drawer.classList.remove('on');
+  drawer.setAttribute('aria-hidden','true');
+  overlay.classList.remove('on');
 }
 
 // Tab click delegation (sidebar)
