@@ -2672,19 +2672,18 @@ async function loadTransfers(){
     const transferRows=apiRows.filter(r=>{
       const d=parseInt(r?.delay_days||r?.delay||0)||0;
       const s=String(r?.status||'').toLowerCase();
-      const hasBranchTransferHint=Boolean(r?.previous_branch)||Boolean(r?.received_branch);
-      return d>=MIN_TRANSFER_DELAY&&(
-        s.includes('transfer')||
-        s.includes('transferred')||
-        s.includes('تحويل')||
-        s.includes('محول')||
-        s.includes('بالطريق')||
+      const prevBranch=String(r?.previous_branch||'').trim();
+      const recvBranch=String(r?.received_branch||'').trim();
+      const hasBothBranches=Boolean(prevBranch&&recvBranch);
+      const isToBranchTransit=
         s.includes('بالطريق للفرع')||
+        s.includes('بالطريق')||
         s.includes('in_transit')||
         s.includes('on_the_way')||
-        s.includes('with_driver')||
-        hasBranchTransferHint
-      );
+        s.includes('route_to_branch')||
+        s.includes('to_branch');
+      // Transfers tab should show only branch-to-branch in-transit records.
+      return d>=MIN_TRANSFER_DELAY&&hasBothBranches&&isToBranchTransit;
     });
     transfers_data=transferRows.map((r,i)=>{
       const shipmentCode=String(
@@ -2696,25 +2695,25 @@ async function loadTransfers(){
       const cityName=String(
         r.city||r.government||r.area||'—'
       ).trim()||'—';
-      const branchName=String(
-        r.current_branch||r.received_branch||r.branch||'—'
-      ).trim()||'—';
       const prevBranch=String(r.previous_branch||'').trim();
       const recvBranch=String(r.received_branch||'').trim();
+      const fromBranch=prevBranch||String(r.current_branch||r.from_branch||r.branch||'').trim()||'—';
+      const toBranch=recvBranch||String(r.received_branch||r.to_branch||r.branch||'').trim()||'—';
+      const branchRoute=`${fromBranch} → ${toBranch}`;
       const derivedTripId=
         r.trip_id||
         r.tripId||
         r.trip_code||
         r.batch_id||
         r.transfer_id||
-        (prevBranch&&recvBranch?`${prevBranch}→${recvBranch}`:'');
+        `${fromBranch}→${toBranch}`;
       return {
         id:r.id||`api-${shipmentCode}-${i+1}`,
         trip_id:derivedTripId||`بدون-معرف`,
         shipment_code:shipmentCode,
         customer_name:customerName,
         city:cityName,
-        branch:branchName,
+        branch:branchRoute,
         status:(r.status||'pending').toString().toLowerCase(),
         created_at:r.created_at||new Date().toISOString(),
         source:'api'
@@ -2737,7 +2736,7 @@ async function loadTransfers(){
         shipment_code:t.shipments?.tracking_code||'—',
         customer_name:t.shipments?.customer_name||'—',
         city:t.to_branch?.name||'—',
-        branch:t.from_branch?.name||'—',
+        branch:`${t.from_branch?.name||'—'} → ${t.to_branch?.name||'—'}`,
         status:(t.status||'pending').toString().toLowerCase(),
         created_at:t.created_at||new Date().toISOString(),
         source:'legacy'
