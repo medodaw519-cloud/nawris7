@@ -5895,21 +5895,18 @@ async function fetchAPIShipments(){
         item?.order_id,
         item?.id
       ];
-      const objectCandidates=[];
-      try{
-        Object.entries(item||{}).forEach(([,v])=>{
-          if(typeof v==='string'||typeof v==='number')objectCandidates.push(v);
-        });
-      }catch(_){}
-      const candidates=[...namedCandidates,...objectCandidates]
+      const candidates=namedCandidates
         .map(v=>String(v||'').trim())
         .filter(Boolean);
       if(!candidates.length)return 'API-'+Date.now()+'-'+fallbackIndex;
-      // Prefer variants with both digits and letters (e.g. 32587464R), then any lettered code.
-      const mixedCode=candidates.find(v=>/\d/.test(v)&&/[a-z]/i.test(v));
-      if(mixedCode)return mixedCode;
-      const alphaNumeric=candidates.find(v=>/[a-z]/i.test(v));
-      return alphaNumeric||candidates[0];
+      // Prefer explicit code-like values (digits with optional latin suffix/prefix), no spaces.
+      const strictCode=candidates.find(v=>/^[A-Za-z]?\d{4,}[A-Za-z]?$/.test(v));
+      if(strictCode)return strictCode;
+      // Then any compact alphanumeric token without spaces (avoid names/phrases).
+      const compactToken=candidates.find(v=>/^[A-Za-z0-9_-]{5,30}$/.test(v)&&/\d/.test(v));
+      if(compactToken)return compactToken;
+      // Fallback to prioritized tracking fields only.
+      return candidates[0];
     };
     const fetchPageWithRetry=async(baseUrl,cursorVal='',retries=2)=>{
       const cursorStr=String(cursorVal||'').trim();
