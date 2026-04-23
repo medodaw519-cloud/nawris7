@@ -1994,6 +1994,8 @@ const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 const H = {'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json'};
 const LOG_API_BASE = 'api';
 const MANUAL_EXCEL_SHIPMENTS_ONLY = true; // keep main shipments table sourced only from manual Excel upload
+const API_ASSIGNMENTS_STORAGE_KEY = 'api_assignments';
+const API_ASSIGNMENTS_SETTINGS_KEY = 'api_assignments';
 
 // All available tabs for permission system
 const ALL_TABS = [
@@ -2276,6 +2278,7 @@ async function startApp(){
       sbUp('settings',[{key:'nawris_users',value:JSON.stringify(USERS)}]).catch(()=>{});
     }
   }catch(e){console.warn('⚠️ User sync from Supabase failed:',e);}
+  await loadAPIAssignmentsFromCloud();
 
   applyRole();startClock();
   try{document.getElementById('hero-date').textContent=new Intl.DateTimeFormat('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'}).format(new Date());}catch(e){document.getElementById('hero-date').textContent=new Date().toLocaleDateString('ar-LY',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}
@@ -2401,6 +2404,13 @@ async function loadAll(){
             applyRole();
           }
         }catch(e){console.warn('users sync parse error',e);}
+      }
+      if(r.key===API_ASSIGNMENTS_SETTINGS_KEY){
+        try{
+          const raw=typeof r.value==='string'?JSON.parse(r.value||'{}'):(r.value||{});
+          const parsed=normalizeAPIAssignments(raw);
+          saveAPIAssignments(parsed,{skipCloudSync:true});
+        }catch(e){console.warn('api assignments sync parse error',e);}
       }
     });
     if(driversDataSource==='api')loadCachedCouriersApiData();
@@ -7781,10 +7791,56 @@ async function janzourQuickDelivered(sid){
 // ══════════════════════════════════════════
 // API SHIPMENTS ASSIGNMENT SYSTEM
 // ══════════════════════════════════════════
-function getAPIAssignments(){
-  try{return JSON.parse(localStorage.getItem('api_assignments')||'{}');}catch{return {};}
+function normalizeAPIAssignments(raw){
+  if(!raw||typeof raw!=='object')return {};
+  const normalized={};
+  Object.entries(raw).forEach(([code,emp])=>{
+    const trackingCode=String(code||'').trim();
+    const employeeName=String(emp||'').trim();
+    if(trackingCode&&employeeName)normalized[trackingCode]=employeeName;
+  });
+  return normalized;
 }
-function saveAPIAssignments(obj){localStorage.setItem('api_assignments',JSON.stringify(obj));}
+function getAPIAssignments(){
+  try{
+    return normalizeAPIAssignments(JSON.parse(localStorage.getItem(API_ASSIGNMENTS_STORAGE_KEY)||'{}'));
+  }catch{
+    return {};
+  }
+}
+let apiAssignmentsCloudSyncTimer=null;
+function scheduleAPIAssignmentsCloudSync(){
+  if(apiAssignmentsCloudSyncTimer)clearTimeout(apiAssignmentsCloudSyncTimer);
+  apiAssignmentsCloudSyncTimer=setTimeout(()=>{
+    const payload=getAPIAssignments();
+    sbUp('settings',[{key:API_ASSIGNMENTS_SETTINGS_KEY,value:JSON.stringify(payload)}])
+      .catch(e=>console.warn('⚠️ api_assignments cloud sync failed:',e));
+  },250);
+}
+function saveAPIAssignments(obj,{skipCloudSync=false}={}){
+  const normalized=normalizeAPIAssignments(obj);
+  localStorage.setItem(API_ASSIGNMENTS_STORAGE_KEY,JSON.stringify(normalized));
+  if(!skipCloudSync)scheduleAPIAssignmentsCloudSync();
+}
+async function loadAPIAssignmentsFromCloud(){
+  try{
+    const rows=await sb('settings','GET',null,`?key=eq.${API_ASSIGNMENTS_SETTINGS_KEY}&select=value`);
+    if(rows&&rows.length&&rows[0].value){
+      const raw=typeof rows[0].value==='string'?JSON.parse(rows[0].value):(rows[0].value||{});
+      const parsed=normalizeAPIAssignments(raw);
+      saveAPIAssignments(parsed,{skipCloudSync:true});
+      return parsed;
+    }
+    const local=getAPIAssignments();
+    if(Object.keys(local).length){
+      sbUp('settings',[{key:API_ASSIGNMENTS_SETTINGS_KEY,value:JSON.stringify(local)}]).catch(()=>{});
+    }
+    return local;
+  }catch(e){
+    console.warn('⚠️ loadAPIAssignmentsFromCloud failed:',e);
+    return getAPIAssignments();
+  }
+}
 
 function setAssignedTo(code,empName){
   const s=apiShipments.find(x=>String(x.tracking_code)===String(code));
