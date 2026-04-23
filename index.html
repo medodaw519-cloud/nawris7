@@ -5697,15 +5697,33 @@ async function fetchAPIShipments(){
       return u.toString();
     };
     const pickTrackingCode=(item,fallbackIndex=0)=>{
-      const candidates=[
+      const namedCandidates=[
         item?.tracking_code,
+        item?.trackingCode,
+        item?.tracking_no,
+        item?.tracking_number,
+        item?.parcel_code,
         item?.ParcelCode,
+        item?.order_code,
         item?.code,
+        item?.awb,
+        item?.reference,
         item?.order_id,
         item?.id
-      ].map(v=>String(v||'').trim()).filter(Boolean);
+      ];
+      const objectCandidates=[];
+      try{
+        Object.entries(item||{}).forEach(([,v])=>{
+          if(typeof v==='string'||typeof v==='number')objectCandidates.push(v);
+        });
+      }catch(_){}
+      const candidates=[...namedCandidates,...objectCandidates]
+        .map(v=>String(v||'').trim())
+        .filter(Boolean);
       if(!candidates.length)return 'API-'+Date.now()+'-'+fallbackIndex;
-      // Prefer alpha-numeric variants (e.g. codes with R suffix) over pure numeric ids.
+      // Prefer variants with both digits and letters (e.g. 32587464R), then any lettered code.
+      const mixedCode=candidates.find(v=>/\d/.test(v)&&/[a-z]/i.test(v));
+      if(mixedCode)return mixedCode;
       const alphaNumeric=candidates.find(v=>/[a-z]/i.test(v));
       return alphaNumeric||candidates[0];
     };
