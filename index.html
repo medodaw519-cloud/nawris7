@@ -5741,13 +5741,6 @@ async function fetchAPIShipments(){
     let rawData=[];
     const seen=new Set();
     const normalizedBaseUrl=url.replace(/[?&]cursor=[^&]*/g,'').replace(/[?&]$/,'');
-    const buildPagedApiUrl=(cursorVal='')=>{
-      const u=new URL(normalizedBaseUrl,window.location.origin);
-      // Keep API URL/query exactly as provided by user (no forced filters).
-      if(cursorVal)u.searchParams.set('cursor',String(cursorVal));
-      else u.searchParams.delete('cursor');
-      return u.toString();
-    };
     const pickTrackingCode=(item,fallbackIndex=0)=>{
       const namedCandidates=[
         item?.tracking_code,
@@ -5779,10 +5772,10 @@ async function fetchAPIShipments(){
       const alphaNumeric=candidates.find(v=>/[a-z]/i.test(v));
       return alphaNumeric||candidates[0];
     };
-    const fetchPageWithRetry=async(pageUrl,retries=2)=>{
+    const fetchPageWithRetry=async(baseUrl,cursorVal='',retries=2)=>{
       let lastError=null;
       for(let attempt=0;attempt<=retries;attempt++){
-        const res=await apiFetch(pageUrl,token);
+        const res=await apiFetch(baseUrl,token,cursorVal);
         if(res.ok)return res;
         lastError=new Error(`HTTP ${res.status}`);
         if(attempt<retries){
@@ -5795,13 +5788,21 @@ async function fetchAPIShipments(){
     let nextCursor=null;
     let pageNum=0;
     const MAX_PAGES=500; // safety limit for very large APIs
+    const seenCursors=new Set();
 
     do{
       pageNum++;
-      const pageUrl=buildPagedApiUrl(nextCursor||'');
+      const cursorForPage=String(nextCursor||'').trim();
+      if(cursorForPage){
+        if(seenCursors.has(cursorForPage)){
+          console.warn(`Pagination stopped: repeated next_cursor detected (${cursorForPage}).`);
+          break;
+        }
+        seenCursors.add(cursorForPage);
+      }
       if(el)el.textContent=`⏳ جلب الصفحة ${pageNum}... [${rawData.length} طرد حتى الآن]`;
 
-      const res=await fetchPageWithRetry(pageUrl,2);
+      const res=await fetchPageWithRetry(normalizedBaseUrl,cursorForPage,2);
       const json=await res.json();
 
       const pageData=Array.isArray(json)?json:json?.data||json?.results||json?.orders||json?.shipments||[];
