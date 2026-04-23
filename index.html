@@ -2685,17 +2685,40 @@ async function loadTransfers(){
         hasBranchTransferHint
       );
     });
-    transfers_data=transferRows.map((r,i)=>({
-      id:r.id||`api-${r.shipment_code||Math.random().toString(16).slice(2)}`,
-      trip_id:r.trip_id||r.tripId||r.batch_id||`no-trip-${i+1}`,
-      shipment_code:r.shipment_code||r.tracking_code||'—',
-      customer_name:r.customer_name||'—',
-      city:r.city||'—',
-      branch:r.branch||'—',
-      status:(r.status||'pending').toString().toLowerCase(),
-      created_at:r.created_at||new Date().toISOString(),
-      source:'api'
-    }));
+    transfers_data=transferRows.map((r,i)=>{
+      const shipmentCode=String(
+        r.shipment_code||r.tracking_code||r.code||r.order_code||r.id||'—'
+      ).trim()||'—';
+      const customerName=String(
+        r.customer_name||r.client_name||r.receiver_name||r.reciver_name||'—'
+      ).trim()||'—';
+      const cityName=String(
+        r.city||r.government||r.area||'—'
+      ).trim()||'—';
+      const branchName=String(
+        r.current_branch||r.received_branch||r.branch||'—'
+      ).trim()||'—';
+      const prevBranch=String(r.previous_branch||'').trim();
+      const recvBranch=String(r.received_branch||'').trim();
+      const derivedTripId=
+        r.trip_id||
+        r.tripId||
+        r.trip_code||
+        r.batch_id||
+        r.transfer_id||
+        (prevBranch&&recvBranch?`${prevBranch}→${recvBranch}`:'');
+      return {
+        id:r.id||`api-${shipmentCode}-${i+1}`,
+        trip_id:derivedTripId||`بدون-معرف`,
+        shipment_code:shipmentCode,
+        customer_name:customerName,
+        city:cityName,
+        branch:branchName,
+        status:(r.status||'pending').toString().toLowerCase(),
+        created_at:r.created_at||new Date().toISOString(),
+        source:'api'
+      };
+    });
     transfers_data.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
     transferTripGroups=groupByTrip(transfers_data);
     transferTripOrder=Object.keys(transferTripGroups).sort((a,b)=>String(b).localeCompare(String(a),'ar'));
