@@ -1186,6 +1186,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
           </select>
           <button class="btn btn-pur btn-sm" onclick="connectAPI2()">🔌 اتصال</button>
           <button class="btn btn-ghost btn-sm" onclick="startFreshAPISync()">🧹 بدء جديد</button>
+          <button class="btn btn-red btn-sm" onclick="deleteAPIConnectionPermanently()">🗑️ حذف نهائي</button>
         </div>
       </div>
       <div id="api2-status" style="font-size:11px;color:var(--mute);margin-top:6px"></div>
@@ -5731,6 +5732,30 @@ async function startFreshAPISync(){
   clearAPIStateForFreshStart(false);
   toast('🧹 بدء جديد: جارٍ جلب كل الطرود من API...','i');
   await fetchAPIShipments();
+}
+
+async function deleteAPIConnectionPermanently(){
+  if(!confirm('سيتم حذف ربط API نهائيًا ومسح البيانات المحلية الحالية. هل أنت متأكد؟'))return;
+  try{
+    if(autoFetchTimer2){clearInterval(autoFetchTimer2);autoFetchTimer2=null;}
+    await sbUp('settings',[
+      {key:'api_url',value:''},
+      {key:'api_token',value:''},
+      {key:'api_auto_interval',value:'0'}
+    ]);
+    const ids=['api-url2','api-token2','api-url','api-token'];
+    ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    const iv=document.getElementById('api-interval2');if(iv)iv.value='0';
+    const iv1=document.getElementById('api-interval');if(iv1)iv1.value='0';
+    const dot=document.getElementById('api-conn-dot');if(dot)dot.className='sync-dot';
+    const stEl=document.getElementById('api-conn-status');if(stEl)stEl.textContent='غير متصل';
+    const s2=document.getElementById('api2-status');if(s2)s2.textContent='تم حذف ربط API نهائيًا.';
+    const s1=document.getElementById('api-status');if(s1)s1.textContent='تم حذف ربط API نهائيًا.';
+    clearAPIStateForFreshStart(false);
+    toast('🗑️ تم حذف ربط API نهائيًا. يمكنك إعادة الربط الآن.','s');
+  }catch(e){
+    toast('تعذّر حذف ربط API: '+(e?.message||e),'e');
+  }
 }
 
 function setAPISeg(s){
