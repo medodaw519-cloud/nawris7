@@ -2111,7 +2111,7 @@ function saveUsers(users){
 }
 let USERS = loadUsers();
 
-let CU=null, shipments=[], shipments_base=[], drivers_db=[], branches=[], regions=[], stores=[], contact_results_db=[];
+let CU=null, shipments=[], drivers_db=[], branches=[], regions=[], stores=[], contact_results_db=[];
 let returns_data=[], transfers_data=[], contacted=new Set(), checked=new Set();
 let seg='all', sPage=1, masterSeg='regions', meTable='', meRecord=null, alphaFilter='';
 let PER=25;
@@ -2405,9 +2405,7 @@ async function loadAll(){
       sb('settings','GET',null,'?select=key,value'),
       sb('contact_results','GET',null,'?select=*'),
     ]);
-    shipments_base=Array.isArray(sh)?sh:[];
-    shipments=mergeApiIntoShipments(shipments_base);
-    drivers_db=dr; branches=br; regions=re; stores=st;
+    shipments=sh; drivers_db=dr; branches=br; regions=re; stores=st;
     contacted=new Set(ct.map(r=>r.shipment_id));
     contact_results_db=crdb||[];
     if(tpls.length) WA_TPLS=tpls;
@@ -2450,92 +2448,20 @@ async function loadShipments(){
       sbAll('shipments_view','?order=delay_days.desc'),
       sbAll('contacted_log','?select=shipment_id'),
     ]);
-    shipments_base=Array.isArray(sh)?sh:[];
-    shipments=mergeApiIntoShipments(shipments_base);
-    contacted=new Set(ct.map(r=>r.shipment_id));
+    shipments=sh; contacted=new Set(ct.map(r=>r.shipment_id));
     refreshAll(); setSyncState('ok','متصل');
   }catch(e){setSyncState('err','خطأ');toast('خطأ: '+e.message,'e');}
 }
 
-function mergeApiIntoShipments(baseList){
-  const base=Array.isArray(baseList)?baseList:[];
-  const api=Array.isArray(apiShipments)?apiShipments:[];
-  if(!api.length)return [...base];
-  const existingCodes=new Set(base.map(s=>String(s?.tracking_code||'').trim()).filter(Boolean));
-  const mappedApi=api
-    .filter(s=>!existingCodes.has(String(s?.tracking_code||'').trim()))
-    .map(s=>({
-      id:`api_${s.tracking_code||Math.random().toString(36).slice(2,8)}`,
-      tracking_code:s.tracking_code||'—',
-      customer_name:s.client_name||s.receiver_name||'—',
-      customer_phone:s.customer_phone||'—',
-      driver_name:s.captain||'—',
-      current_branch:s.current_branch||'—',
-      responsible_branch:s.current_branch||'—',
-      government:s.government||'—',
-      area:s.area||'—',
-      status:s.status||'with_driver',
-      delay_days:Number(s.delay_days||0),
-      __from_api:true
-    }));
-  return [...base,...mappedApi];
-}
-
 async function loadReturns(){
   try{
-    const rows=await sb('returns','GET',null,'?select=*,shipments(tracking_code,customer_name),drivers(name),branches(name)&order=created_at.desc&limit=500');
-    if(Array.isArray(rows)&&rows.length){
-      returns_data=rows;
-      localStorage.setItem('returns_cache_v1',JSON.stringify(rows));
-    }else{
-      const cached=JSON.parse(localStorage.getItem('returns_cache_v1')||'[]');
-      if(Array.isArray(cached)&&cached.length){
-        returns_data=cached;
-      }else{
-        // Fallback: derive visible returns from shipments when returns table is empty.
-        returns_data=(shipments||[])
-          .filter(s=>String(s.status||'')==='returned')
-          .slice(0,500)
-          .map((s,i)=>({
-            id:`drv_ret_${s.id||i}`,
-            shipment_id:s.id,
-            reason:'other',
-            location:'with_driver',
-            created_at:new Date().toISOString(),
-            shipments:{tracking_code:s.tracking_code||'—',customer_name:s.customer_name||'—'},
-            drivers:{name:s.driver_name||'—'},
-            branches:{name:s.current_branch||'—'}
-          }));
-      }
-    }
+    returns_data=await sb('returns','GET',null,'?select=*,shipments(tracking_code,customer_name),drivers(name),branches(name)&order=created_at.desc&limit=500');
     renderReturns();
   }catch(e){console.warn('returns',e);}
 }
 async function loadTransfers(){
   try{
-    const rows=await sb('transfers','GET',null,'?select=*,shipments(tracking_code),from_branch:branches!from_branch_id(name),to_branch:branches!to_branch_id(name)&order=created_at.desc&limit=500');
-    if(Array.isArray(rows)&&rows.length){
-      transfers_data=rows;
-      localStorage.setItem('transfers_cache_v1',JSON.stringify(rows));
-    }else{
-      const cached=JSON.parse(localStorage.getItem('transfers_cache_v1')||'[]');
-      if(Array.isArray(cached)&&cached.length){
-        transfers_data=cached;
-      }else{
-        // Fallback: derive transfers list from shipments marked as transferred.
-        transfers_data=(shipments||[])
-          .filter(s=>String(s.status||'')==='transferred')
-          .slice(0,500)
-          .map((s,i)=>({
-            id:`drv_trf_${s.id||i}`,
-            status:'accepted',
-            created_at:new Date().toISOString(),
-            shipments:{tracking_code:s.tracking_code||'—'},
-            from_branch:{name:s.responsible_branch||'—'},
-            to_branch:{name:s.current_branch||'—'}
-          }));
-      }
-    }
+    transfers_data=await sb('transfers','GET',null,'?select=*,shipments(tracking_code),from_branch:branches!from_branch_id(name),to_branch:branches!to_branch_id(name)&order=created_at.desc&limit=500');
     renderTransfers();
   }catch(e){console.warn('transfers',e);}
 }
@@ -6537,7 +6463,6 @@ function loadCachedAPIShipments(){
       });
       enrichAPICaptainPhones();
       document.getElementById('tb-api').textContent=apiShipments.length;
-      shipments=mergeApiIntoShipments(shipments_base);
       updateKPIs();
     }
     // loadAll() runs buildJanzourSet() before apiShipments is filled from cache — refresh subset now
