@@ -2724,9 +2724,14 @@ async function loadReturns(){
       location:'in_warehouse',
       reason:'other',
       created_at:r.created_at||new Date().toISOString(),
+      delay_days:parseInt(r?.delay_days||r?.delay||0)||0,
+      city:String(r.city||r.government||r.area||'—').trim()||'—',
+      branch:String(r.current_branch||r.branch_name||r.branch||'—').trim()||'—',
+      status_text:String(r.status||'في الشركة').trim()||'في الشركة',
       shipments:{
         tracking_code:r.shipment_code||r.tracking_code||r.code||'—',
-        customer_name:r.customer_name||r.client_name||'—'
+        customer_name:r.customer_name||r.client_name||r.receiver_name||'—',
+        customer_phone:r.receiver_phone||r.customer_phone||r.phone||'—'
       },
       drivers:{name:r.captain||r.driver_name||r.driver||'—'}
     }));
@@ -3849,10 +3854,14 @@ function renderReturns(){
     const row=document.createElement('div');
     row.className='branch-row';
     const c1=document.createElement('div');c1.className='code-cell';c1.innerHTML=backofficeOrderLinkHtml(r.shipments?.tracking_code||'—');
-    const c2=document.createElement('div');c2.textContent=r.shipments?.customer_name||'—';
-    const c3=document.createElement('div');c3.textContent=r.drivers?.name||'—';
+    const c2=document.createElement('div');
+    c2.innerHTML=`<div style="font-weight:700">${r.shipments?.customer_name||'—'}</div><div style="font-size:11px;color:var(--mute)">${r.shipments?.customer_phone||'—'}</div>`;
+    const c3=document.createElement('div');
+    c3.innerHTML=`<div>${r.drivers?.name||'—'}</div><div style="font-size:11px;color:var(--mute)">${r.city||'—'} • ${r.branch||'—'}</div>`;
     const c4=document.createElement('div');c4.innerHTML=`<span class="badge b-orn">${rsnMap[r.reason]||r.reason||'—'}</span>`;
-    const c5=document.createElement('div');c5.innerHTML=`<span class="badge ${r.location==='returned_to_store'?'b-grn':r.location==='in_warehouse'?'b-gold':'b-red'}">${locMap[r.location]||r.location||'—'}</span>`;
+    const c5=document.createElement('div');
+    const delayTxt=Number.isFinite(Number(r.delay_days))?` • ${Number(r.delay_days)} يوم`:'';
+    c5.innerHTML=`<span class="badge ${r.location==='returned_to_store'?'b-grn':r.location==='in_warehouse'?'b-gold':'b-red'}">${locMap[r.location]||r.location||'—'}</span><div style="font-size:11px;color:var(--mute);margin-top:4px">${r.status_text||'—'}${delayTxt}</div>`;
     const c6=document.createElement('div');
     const btn=document.createElement('button');
     btn.className='btn btn-ghost btn-sm';
