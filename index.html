@@ -5905,6 +5905,15 @@ async function fetchAPIShipments(){
     const seen=new Set();
     const normalizedBaseUrl=url.replace(/[?&]cursor=[^&]*/g,'').replace(/[?&]$/,'');
     const pickTrackingCode=(item,fallbackIndex=0)=>{
+      const keyNorm=(k)=>String(k||'')
+        .toLowerCase()
+        .replace(/[\u200e\u200f\u202a-\u202e]/g,'')
+        .replace(/[\s_\-]/g,'')
+        .replace(/[أإآٱ]/g,'ا');
+      const codeKeySet=new Set([
+        'trackingcode','trackingno','trackingnumber','parcelcode','ordercode','code','awb','reference','orderid','id',
+        'الرمز','كود','كودالشحنة','رقمالشحنة','رقمالطلب','رقمالتتبع','رمزالشحنة'
+      ].map(keyNorm));
       const namedCandidates=[
         item?.tracking_code,
         item?.trackingCode,
@@ -5924,6 +5933,11 @@ async function fetchAPIShipments(){
         item?.order_id,
         item?.id
       ];
+      try{
+        Object.entries(item||{}).forEach(([k,v])=>{
+          if(codeKeySet.has(keyNorm(k)))namedCandidates.push(v);
+        });
+      }catch(_){}
       const candidates=namedCandidates
         .map(v=>String(v||'').trim())
         .filter(Boolean);
@@ -5936,6 +5950,16 @@ async function fetchAPIShipments(){
       if(compactToken)return compactToken;
       // Fallback to prioritized tracking fields only.
       return candidates[0];
+    };
+    const getPageRows=(json)=>{
+      if(Array.isArray(json))return json;
+      if(Array.isArray(json?.data))return json.data;
+      if(Array.isArray(json?.results))return json.results;
+      if(Array.isArray(json?.orders))return json.orders;
+      if(Array.isArray(json?.shipments))return json.shipments;
+      if(Array.isArray(json?.data?.data))return json.data.data;
+      if(Array.isArray(json?.payload?.data))return json.payload.data;
+      return [];
     };
     const fetchPageWithRetry=async(baseUrl,cursorVal='',retries=2)=>{
       const cursorStr=String(cursorVal||'').trim();
@@ -5963,7 +5987,7 @@ async function fetchAPIShipments(){
             lastError=new Error(`Invalid JSON (${mode.label})`);
             continue;
           }
-          const pageData=Array.isArray(json)?json:json?.data||json?.results||json?.orders||json?.shipments||[];
+          const pageData=getPageRows(json);
           const responseCursor=String(json?.meta?.next_cursor||json?.next_cursor||'').trim();
           // If cursor doesn't advance, this mode likely returned the wrong page.
           if(cursorStr&&pageData.length>0&&responseCursor!==''&&responseCursor===cursorStr){
@@ -6024,7 +6048,7 @@ async function fetchAPIShipments(){
           throw fetchErr;
         }
         const json=pageResult.json;
-        const pageData=Array.isArray(json)?json:json?.data||json?.results||json?.orders||json?.shipments||[];
+        const pageData=getPageRows(json);
         nextCursor=json?.meta?.next_cursor||json?.next_cursor||null;
         dayRawCount+=pageData.length;
         const newCount=appendUniqueItems(pageData);
