@@ -621,6 +621,31 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
 .lbv{font-family:var(--mono);font-size:var(--fs-sm);font-weight:900;min-width:32px;text-align:left;color:var(--pale)}
 
 /* ── TRANSFERS TRIP TABLE ── */
+.branch-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #dbe4ef;border-radius:14px;padding:12px 14px;margin-bottom:12px;box-shadow:0 4px 16px rgba(15,23,42,.06)}
+.branch-brand{display:flex;align-items:center;gap:10px}
+.branch-logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#0ea5e9,#2563eb);display:flex;align-items:center;justify-content:center;color:#fff}
+.branch-title{font-weight:900;color:#0f172a}
+.branch-sub{font-size:11px;color:#64748b}
+.branch-live{display:flex;align-items:center;gap:6px;font-size:12px;color:#065f46;font-weight:700}
+.branch-live .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.branch-conn-card{border-right:4px solid #0ea5e9;margin-bottom:10px}
+.branch-conn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.branch-conn-meta{margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.branch-sync{font-size:11px;color:var(--mute)}
+.branch-kpis{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:10px;margin-bottom:10px}
+.branch-kpi{border-radius:12px;padding:10px 12px;color:#fff;display:flex;flex-direction:column;gap:4px;box-shadow:0 8px 16px rgba(2,6,23,.1)}
+.branch-kpi div{font-size:11px;opacity:.92}
+.branch-kpi strong{font-size:24px;line-height:1}
+.branch-kpi.total{background:linear-gradient(135deg,#0ea5e9,#1d4ed8)}
+.branch-kpi.pending{background:linear-gradient(135deg,#f59e0b,#f97316)}
+.branch-kpi.delayed{background:linear-gradient(135deg,#ef4444,#dc2626)}
+.branch-kpi.delivered{background:linear-gradient(135deg,#10b981,#059669)}
+.branch-filters.sticky{position:sticky;top:8px;z-index:6;background:#fff;border:1px solid #dbe4ef;border-radius:12px;padding:8px;box-shadow:0 4px 16px rgba(15,23,42,.08)}
+.branch-list{display:grid;gap:10px}
+.branch-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(130px,1fr) minmax(120px,1fr) 120px 110px 100px;gap:8px;align-items:center;background:#fff;border:1px solid #dbe4ef;border-radius:12px;padding:10px 12px}
+.branch-empty{padding:30px;text-align:center;background:#fff;border:1px dashed #cbd5e1;border-radius:12px;color:#64748b;font-weight:700}
+.branch-skeleton{height:58px;border-radius:12px;background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 37%,#e2e8f0 63%);background-size:400% 100%;animation:shimmer 1.2s infinite}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
 .tr-wrap{border:1px solid var(--rim2);border-radius:var(--r);overflow:hidden;background:var(--bg2)}
 .tr-head{display:grid;grid-template-columns:minmax(200px,1.4fr) 90px 120px;gap:8px;padding:10px 14px;background:var(--bg4);border-bottom:1px solid var(--rim2);font-size:var(--fs-xs);color:var(--dim);font-weight:800}
 .trip-row{display:grid;grid-template-columns:minmax(200px,1.4fr) 90px 120px;gap:8px;padding:11px 14px;border-bottom:1px solid var(--rim);align-items:start;cursor:pointer;transition:background .15s ease}
@@ -643,6 +668,10 @@ textarea.fi{resize:vertical;min-height:80px;line-height:1.6;width:100%}
 .status-pending::before{background:var(--gold)}
 .status-default::before{background:var(--dim)}
 .tr-empty,.tr-loading,.tr-error{padding:26px 14px;text-align:center;color:var(--mute);font-weight:700}
+@media(max-width:900px){
+  .branch-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))}
+  .branch-row{grid-template-columns:1fr 1fr}
+}
 
 /* ── WA TEMPLATE ── */
 .tpl-card{background:var(--bg4);border:1px solid var(--rim);border-radius:var(--r2);padding:12px;margin-bottom:8px;cursor:pointer;transition:border-color .2s}
@@ -1051,19 +1080,37 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
 
   <!-- ══ RETURNS ══ -->
   <div class="page" id="tab-returns">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:18px;font-weight:800">🏢 في الشركة</div>
-      <button class="btn btn-ghost btn-sm" onclick="loadReturns()">↻ تحديث</button>
+    <div class="branch-head">
+      <div class="branch-brand">
+        <div class="branch-logo">🏢</div>
+        <div>
+          <div class="branch-title">في الشركة</div>
+          <div class="branch-sub">لوحة متابعة حديثة لحالة الشحنات داخل الشركة</div>
+        </div>
+      </div>
+      <div class="branch-live"><span class="dot"></span><span id="returns-live-state">Connected</span></div>
     </div>
-    <div class="card" style="border-right:3px solid var(--blu);margin-bottom:12px">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <input class="fi fi-grow" id="branch-api-url-r" placeholder="رابط API متابعة الفروع..." dir="ltr">
+    <div class="card branch-conn-card">
+      <div class="branch-conn-row">
+        <input class="fi fi-grow" id="branch-api-url-r" placeholder="رابط API متابعة الفروع..." dir="ltr" readonly>
         <input class="fi" id="branch-api-token-r" type="password" placeholder="X-API-TOKEN..." dir="ltr" style="min-width:180px">
         <button class="btn btn-blu btn-sm" onclick="connectBranchAPI()">🔌 ربط متابعة الفروع</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadReturns()">↻ تحديث</button>
+      </div>
+      <div class="branch-conn-meta">
+        <span id="returns-conn-badge" class="badge b-grn">✅ Connected</span>
+        <span id="returns-last-sync" class="branch-sync">آخر مزامنة: —</span>
       </div>
       <div id="branch-api-status-r" style="font-size:11px;color:var(--mute);margin-top:6px">API متابعة الفروع مستقل عن API الطرود</div>
     </div>
-    <div class="fbar">
+    <div class="branch-kpis">
+      <div class="branch-kpi total"><div>إجمالي الشحنات</div><strong id="r-kpi-total">0</strong></div>
+      <div class="branch-kpi pending"><div>بالطريق</div><strong id="r-kpi-way">0</strong></div>
+      <div class="branch-kpi delayed"><div>متأخر</div><strong id="r-kpi-delayed">0</strong></div>
+      <div class="branch-kpi delivered"><div>تم التسليم</div><strong id="r-kpi-delivered">0</strong></div>
+    </div>
+    <div class="fbar branch-filters sticky">
+      <input class="fi fi-grow" id="r-q" type="text" placeholder="🔍 بحث بالكود أو العميل أو المندوب..." oninput="renderReturns()">
       <select class="fi" id="r-loc" onchange="renderReturns()" id="r-loc-sel">
         <option value="">كل المواقع</option>
         <option value="with_driver">مع المندوب</option>
@@ -1078,36 +1125,56 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         <option value="damaged">تالف</option>
         <option value="other">أخرى</option>
       </select>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('r-q').value='';document.getElementById('r-loc').value='';document.getElementById('r-rsn').value='';renderReturns()">✕ مسح</button>
     </div>
-    <div class="tw">
-      <table>
-        <thead><tr><th>كود الطرد</th><th>العميل</th><th>المندوب</th><th>التصنيف</th><th>الموقع</th><th>التاريخ</th><th>إجراء</th></tr></thead>
-        <tbody id="r-tbody"><tr><td colspan="7" style="text-align:center;padding:36px;color:var(--mute)">لا توجد بيانات في الشركة</td></tr></tbody>
-      </table>
+    <div id="returns-list" class="branch-list" aria-live="polite">
+      <div class="branch-empty">لا توجد بيانات</div>
     </div>
   </div>
 
   <!-- ══ TRANSFERS ══ -->
   <div class="page" id="tab-transfers">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:18px;font-weight:800">🔄 التحويلات</div>
-      <button class="btn btn-ghost btn-sm" onclick="loadTransfers()">↻ تحديث</button>
+    <div class="branch-head">
+      <div class="branch-brand">
+        <div class="branch-logo">🔄</div>
+        <div>
+          <div class="branch-title">التحويلات</div>
+          <div class="branch-sub">متابعة حركة الرحلات بين الفروع بشكل لحظي</div>
+        </div>
+      </div>
+      <div class="branch-live"><span class="dot"></span><span id="transfers-live-state">Connected</span></div>
     </div>
-    <div class="card" style="border-right:3px solid var(--blu);margin-bottom:12px">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <input class="fi fi-grow" id="branch-api-url-t" placeholder="رابط API متابعة الفروع..." dir="ltr">
+    <div class="card branch-conn-card">
+      <div class="branch-conn-row">
+        <input class="fi fi-grow" id="branch-api-url-t" placeholder="رابط API متابعة الفروع..." dir="ltr" readonly>
         <input class="fi" id="branch-api-token-t" type="password" placeholder="X-API-TOKEN..." dir="ltr" style="min-width:180px">
         <button class="btn btn-blu btn-sm" onclick="connectBranchAPI()">🔌 ربط متابعة الفروع</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadTransfers()">↻ تحديث</button>
+      </div>
+      <div class="branch-conn-meta">
+        <span id="transfers-conn-badge" class="badge b-grn">✅ Connected</span>
+        <span id="transfers-last-sync" class="branch-sync">آخر مزامنة: —</span>
       </div>
       <div id="branch-api-status-t" style="font-size:11px;color:var(--mute);margin-top:6px">هذا الربط خاص بفي الشركة + التحويلات</div>
     </div>
-    <div class="fbar">
+    <div class="branch-kpis">
+      <div class="branch-kpi total"><div>إجمالي الشحنات</div><strong id="t-kpi-total">0</strong></div>
+      <div class="branch-kpi pending"><div>بالطريق</div><strong id="t-kpi-way">0</strong></div>
+      <div class="branch-kpi delayed"><div>متأخر</div><strong id="t-kpi-delayed">0</strong></div>
+      <div class="branch-kpi delivered"><div>تم التسليم</div><strong id="t-kpi-delivered">0</strong></div>
+    </div>
+    <div class="fbar branch-filters sticky">
+      <input class="fi fi-grow" id="t-q" type="text" placeholder="🔍 بحث بالكود أو المسار..." oninput="renderTransfers()">
       <select class="fi" id="t-st" onchange="renderTransfers()">
         <option value="">كل الحالات</option>
         <option value="delivered">تم التسليم</option>
         <option value="delayed">متأخر</option>
         <option value="pending">معلق</option>
       </select>
+      <select class="fi" id="t-branch" onchange="renderTransfers()">
+        <option value="">كل الفروع</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('t-q').value='';document.getElementById('t-st').value='';document.getElementById('t-branch').value='';renderTransfers()">✕ مسح</button>
     </div>
     <div class="tr-wrap">
       <div class="tr-head">
@@ -2636,6 +2703,8 @@ async function loadReturns(){
   const EXTERNAL_DELAYED_API=cfg.url;
   const MIN_COMPANY_DELAY=2;
   try{
+    const listEl=document.getElementById('returns-list');
+    if(listEl)listEl.innerHTML='<div class="branch-skeleton"></div><div class="branch-skeleton"></div><div class="branch-skeleton"></div>';
     setBranchApiStatus('⏳ جارٍ جلب بيانات "في الشركة"...');
     // Branch follow-up "في الشركة": start delay from 2 days.
     const token=cfg.token;
@@ -2662,15 +2731,22 @@ async function loadReturns(){
       drivers:{name:r.captain||r.driver_name||r.driver||'—'}
     }));
     renderReturns();
+    const syncTxt='آخر مزامنة: '+new Date().toLocaleTimeString('ar-LY');
+    const last=document.getElementById('returns-last-sync');if(last)last.textContent=syncTxt;
+    const live=document.getElementById('returns-live-state');if(live)live.textContent='Connected';
+    const conn=document.getElementById('returns-conn-badge');if(conn){conn.className='badge b-grn';conn.textContent='✅ Connected';}
     setBranchApiStatus(`✅ في الشركة: تم جلب ${returns_data.length} سجل (من ${rows.length} من API)`,`ok`);
   }catch(e){
     console.warn('returns api',e);
     try{
       returns_data=await sb('returns','GET',null,'?select=*,shipments(tracking_code,customer_name),drivers(name),branches(name)&order=created_at.desc&limit=500');
       renderReturns();
+      const conn=document.getElementById('returns-conn-badge');if(conn){conn.className='badge b-gold';conn.textContent='⚠️ Fallback';}
       setBranchApiStatus(`⚠️ في الشركة: fallback محلي (${returns_data.length} سجل)`,`info`);
     }catch(err){
       console.warn('returns fallback',err);
+      const conn=document.getElementById('returns-conn-badge');if(conn){conn.className='badge b-red';conn.textContent='❌ Disconnected';}
+      const live=document.getElementById('returns-live-state');if(live)live.textContent='Disconnected';
       setBranchApiStatus('❌ فشل جلب بيانات "في الشركة"','err');
     }
   }
@@ -2680,7 +2756,7 @@ async function loadTransfers(){
   const EXTERNAL_DELAYED_API=cfg.url;
   const MIN_TRANSFER_DELAY=3;
   const table=document.getElementById('transfers-table');
-  if(table)table.innerHTML='<div class="tr-loading">⏳ جارٍ تحميل التحويلات...</div>';
+  if(table)table.innerHTML='<div class="branch-skeleton"></div><div class="branch-skeleton"></div><div class="branch-skeleton"></div>';
   try{
     setBranchApiStatus('⏳ جارٍ جلب بيانات "التحويلات"...');
     // Transfers follow-up: start delay from 3 days.
@@ -2748,7 +2824,12 @@ async function loadTransfers(){
     transferTripGroups=groupByTrip(transfers_data);
     transferTripOrder=Object.keys(transferTripGroups).sort((a,b)=>String(b).localeCompare(String(a),'ar'));
     transferExpandedTrips=new Set();
+    const branchSel=document.getElementById('t-branch');if(branchSel)delete branchSel.dataset.ready;
     renderTransfers();
+    const syncTxt='آخر مزامنة: '+new Date().toLocaleTimeString('ar-LY');
+    const last=document.getElementById('transfers-last-sync');if(last)last.textContent=syncTxt;
+    const live=document.getElementById('transfers-live-state');if(live)live.textContent='Connected';
+    const conn=document.getElementById('transfers-conn-badge');if(conn){conn.className='badge b-grn';conn.textContent='✅ Connected';}
     setBranchApiStatus(`✅ التحويلات: تم جلب ${transfers_data.length} سجل (من ${apiRows.length} من API)`,`ok`);
   }catch(e){
     console.warn('transfers api',e);
@@ -2773,11 +2854,15 @@ async function loadTransfers(){
       transferTripGroups=groupByTrip(transfers_data);
       transferTripOrder=Object.keys(transferTripGroups).sort((a,b)=>String(b).localeCompare(String(a),'ar'));
       transferExpandedTrips=new Set();
+      const branchSel=document.getElementById('t-branch');if(branchSel)delete branchSel.dataset.ready;
       renderTransfers();
+      const conn=document.getElementById('transfers-conn-badge');if(conn){conn.className='badge b-gold';conn.textContent='⚠️ Fallback';}
       setBranchApiStatus(`⚠️ التحويلات: fallback محلي (${transfers_data.length} سجل)`,`info`);
     }catch(err){
       console.warn('transfers fallback',err);
       if(table)table.innerHTML='<div class="tr-error">❌ تعذر تحميل التحويلات</div>';
+      const conn=document.getElementById('transfers-conn-badge');if(conn){conn.className='badge b-red';conn.textContent='❌ Disconnected';}
+      const live=document.getElementById('transfers-live-state');if(live)live.textContent='Disconnected';
       toast('خطأ في تحميل التحويلات: '+(err.message||e.message),'e');
       setBranchApiStatus('❌ فشل جلب بيانات "التحويلات"','err');
     }
@@ -3730,6 +3815,7 @@ function renderDrivers(){
 // ══════════════════════════════════════════
 function getReturnLocs(){return getAllReturnStatuses().map(s=>s.key);}
 function renderReturns(){
+  const q=normalizeIdentityText(document.getElementById('r-q')?.value||'');
   const loc=document.getElementById('r-loc')?.value||'';
   const rsn=document.getElementById('r-rsn')?.value||'';
   const allowed=getReturnLocs();
@@ -3742,19 +3828,42 @@ function renderReturns(){
     if(!allowed.includes(r.location))return false;
     if(loc&&r.location!==loc)return false;
     if(rsn&&r.reason!==rsn)return false;
+    if(q){
+      const text=normalizeIdentityText(`${r.shipments?.tracking_code||''} ${r.shipments?.customer_name||''} ${r.drivers?.name||''}`);
+      if(!text.includes(q))return false;
+    }
     return true;
   });
-  const tbody=document.getElementById('r-tbody');
-  if(!list.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--mute)">لا توجد بيانات في الشركة</td></tr>';return;}
-  tbody.innerHTML=list.map(r=>`<tr>
-    <td class="code-cell">${backofficeOrderLinkHtml(r.shipments?.tracking_code||'—')}</td>
-    <td>${r.shipments?.customer_name||'—'}</td>
-    <td>${r.drivers?.name||'—'}</td>
-    <td><span class="badge b-orn">${rsnMap[r.reason]||r.reason||'—'}</span></td>
-    <td><span class="badge ${r.location==='returned_to_store'?'b-grn':r.location==='in_warehouse'?'b-gold':'b-red'}">${locMap[r.location]||r.location||'—'}</span></td>
-    <td style="font-size:11px;color:var(--mute)">${r.created_at?r.created_at.slice(0,10):'—'}</td>
-    <td><button class="btn btn-ghost btn-sm" onclick="updateRetLoc('${r.id}','${r.location}')">تحديث الموقع</button></td>
-  </tr>`).join('');
+  const total=returns_data.length;
+  const onWay=returns_data.filter(r=>String(r.location||'')==='with_driver').length;
+  const delayed=returns_data.filter(r=>(Number(r?.delay_days||0)||0)>=3).length;
+  const delivered=returns_data.filter(r=>String(r.location||'')==='returned_to_store').length;
+  const setTxt=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=String(val);};
+  setTxt('r-kpi-total',total);setTxt('r-kpi-way',onWay);setTxt('r-kpi-delayed',delayed);setTxt('r-kpi-delivered',delivered);
+
+  const listEl=document.getElementById('returns-list');
+  if(!listEl)return;
+  if(!list.length){listEl.innerHTML='<div class="branch-empty">لا توجد بيانات</div>';return;}
+  const frag=document.createDocumentFragment();
+  list.forEach(r=>{
+    const row=document.createElement('div');
+    row.className='branch-row';
+    const c1=document.createElement('div');c1.className='code-cell';c1.innerHTML=backofficeOrderLinkHtml(r.shipments?.tracking_code||'—');
+    const c2=document.createElement('div');c2.textContent=r.shipments?.customer_name||'—';
+    const c3=document.createElement('div');c3.textContent=r.drivers?.name||'—';
+    const c4=document.createElement('div');c4.innerHTML=`<span class="badge b-orn">${rsnMap[r.reason]||r.reason||'—'}</span>`;
+    const c5=document.createElement('div');c5.innerHTML=`<span class="badge ${r.location==='returned_to_store'?'b-grn':r.location==='in_warehouse'?'b-gold':'b-red'}">${locMap[r.location]||r.location||'—'}</span>`;
+    const c6=document.createElement('div');
+    const btn=document.createElement('button');
+    btn.className='btn btn-ghost btn-sm';
+    btn.textContent='تحديث الموقع';
+    btn.onclick=()=>updateRetLoc(r.id,r.location);
+    c6.appendChild(btn);
+    row.append(c1,c2,c3,c4,c5,c6);
+    frag.appendChild(row);
+  });
+  listEl.innerHTML='';
+  listEl.appendChild(frag);
 }
 function openRetModal(sid){
   document.getElementById('ret-sid').value=sid;
@@ -3877,13 +3986,32 @@ function createTripChildren(tripId,tripShipments){
 function renderTransfers(){
   const container=document.getElementById('transfers-table');
   if(!container)return;
+  const q=normalizeIdentityText(document.getElementById('t-q')?.value||'');
   const statusFilter=(document.getElementById('t-st')?.value||'').toLowerCase();
+  const branchFilter=(document.getElementById('t-branch')?.value||'').trim();
+  const branchSel=document.getElementById('t-branch');
+  if(branchSel&&!branchSel.dataset.ready){
+    const options=[...new Set(transfers_data.flatMap(s=>[s.from_branch,s.to_branch]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'ar'));
+    branchSel.innerHTML='<option value="">كل الفروع</option>'+options.map(b=>`<option>${b}</option>`).join('');
+    branchSel.dataset.ready='1';
+  }
+  const total=transfers_data.length;
+  const way=transfers_data.filter(s=>getTransferStatusMeta(s.status).label==='بالطريق').length;
+  const delayed=transfers_data.filter(s=>getTransferStatusMeta(s.status).label==='متأخر').length;
+  const delivered=transfers_data.filter(s=>getTransferStatusMeta(s.status).label==='تم التسليم').length;
+  const setTxt=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=String(val);};
+  setTxt('t-kpi-total',total);setTxt('t-kpi-way',way);setTxt('t-kpi-delayed',delayed);setTxt('t-kpi-delivered',delivered);
   const frag=document.createDocumentFragment();
   let renderedTrips=0;
 
   transferTripOrder.forEach(tripId=>{
     const original=transferTripGroups[tripId]||[];
     const filtered=original.filter(s=>{
+      if(branchFilter&&String(s.from_branch||'')!==branchFilter&&String(s.to_branch||'')!==branchFilter)return false;
+      if(q){
+        const txt=normalizeIdentityText(`${s.shipment_code||''} ${s.customer_name||''} ${s.branch||''} ${s.from_branch||''} ${s.to_branch||''}`);
+        if(!txt.includes(q))return false;
+      }
       if(!statusFilter)return true;
       const meta=getTransferStatusMeta(s.status);
       if(statusFilter==='pending')return meta.label==='معلق';
@@ -3934,6 +4062,7 @@ function renderTransfers(){
     const ldSpan=document.createElement('span');
     ldSpan.textContent='عدد الأيام';
     const ldBold=document.createElement('b');
+    if(Number.isFinite(delayNum)&&delayNum>=3)ldBold.style.color='var(--red)';
     ldBold.textContent=delayLine;
     lineDelay.append(ldSpan,ldBold);
     stack.append(lineFrom,lineTo,lineDelay);
