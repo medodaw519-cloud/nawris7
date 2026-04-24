@@ -755,7 +755,11 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div class="sb-item manager-only" data-tab="reports"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> التقارير</div>
       <div class="sb-item manager-only" data-tab="staff"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> متابعة الموظفين</div>
       <div class="sb-item manager-only" data-tab="commission-admin"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> عمولات جنزور</div>
-      <div class="sb-item manager-only" data-tab="master"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> database</div>
+      <div class="sb-item manager-only" data-tab="master" data-menu-toggle="database"><span class="sb-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> database <span class="sb-caret">▾</span></div>
+      <div class="sb-submenu manager-only" data-menu="database">
+        <div class="sb-subitem" data-db-menu="master">البيانات الثابتة</div>
+        <div class="sb-subitem" data-db-menu="upload">رفع البيانات</div>
+      </div>
     </nav>
     <div class="sb-footer">
       <div class="sb-user">
@@ -2202,6 +2206,7 @@ let transferTripGroups={}, transferTripOrder=[], transferExpandedTrips=new Set()
 let seg='all', sPage=1, masterSeg='regions', meTable='', meRecord=null, alphaFilter='';
 let shipmentsMenuOpen=false;
 let branchesMenuOpen=false;
+let databaseMenuOpen=false;
 let PER=25;
 let sSortKey='delay_days';
 let sSortDir='desc';
@@ -4960,6 +4965,21 @@ function gTab(id){
   }else{
     document.querySelectorAll('#nav-tabs .sb-subitem[data-branch-menu]').forEach(el=>el.classList.remove('on'));
   }
+
+  // Keep database submenu state in sync with active page.
+  if(id==='master'){
+    setDatabaseMenuOpen(true);
+    document.querySelectorAll('#nav-tabs .sb-subitem[data-db-menu]').forEach(el=>{
+      el.classList.toggle('on',el.dataset.dbMenu==='master');
+    });
+  }else if(id==='upload'){
+    setDatabaseMenuOpen(true);
+    document.querySelectorAll('#nav-tabs .sb-subitem[data-db-menu]').forEach(el=>{
+      el.classList.toggle('on',el.dataset.dbMenu==='upload');
+    });
+  }else{
+    document.querySelectorAll('#nav-tabs .sb-subitem[data-db-menu]').forEach(el=>el.classList.remove('on'));
+  }
 }
 
 function setShipmentsMenuOpen(open){
@@ -4977,6 +4997,13 @@ function setBranchesMenuOpen(open){
   if(item)item.classList.toggle('open',branchesMenuOpen);
   if(menu)menu.style.display=branchesMenuOpen?'block':'none';
 }
+function setDatabaseMenuOpen(open){
+  databaseMenuOpen=!!open;
+  const item=document.querySelector('#nav-tabs .sb-item[data-menu-toggle="database"]');
+  const menu=document.querySelector('#nav-tabs .sb-submenu[data-menu="database"]');
+  if(item)item.classList.toggle('open',databaseMenuOpen);
+  if(menu)menu.style.display=databaseMenuOpen?'block':'none';
+}
 
 function openBranchesMenuSection(section){
   if(section==='transfers'){
@@ -4984,6 +5011,9 @@ function openBranchesMenuSection(section){
     return;
   }
   gTab('returns');
+}
+function openDatabaseMenuSection(section){
+  gTab(section==='upload'?'upload':'master');
 }
 
 function openShipmentsMenuFilter(status){
@@ -5026,6 +5056,11 @@ document.getElementById('nav-tabs').addEventListener('click',e=>{
     openBranchesMenuSection(branchSub.dataset.branchMenu||'company');
     return;
   }
+  const dbSub=e.target.closest('.sb-subitem[data-db-menu]');
+  if(dbSub){
+    openDatabaseMenuSection(dbSub.dataset.dbMenu||'master');
+    return;
+  }
   const menuToggle=e.target.closest('.sb-item[data-menu-toggle]');
   if(menuToggle&&menuToggle.dataset.menuToggle==='shipments'){
     setShipmentsMenuOpen(!shipmentsMenuOpen);
@@ -5041,6 +5076,15 @@ document.getElementById('nav-tabs').addEventListener('click',e=>{
     }
     return;
   }
+  if(menuToggle&&menuToggle.dataset.menuToggle==='database'){
+    setDatabaseMenuOpen(!databaseMenuOpen);
+    if(!databaseMenuOpen){
+      document.querySelectorAll('#nav-tabs .sb-subitem[data-db-menu]').forEach(el=>el.classList.remove('on'));
+    }else{
+      openDatabaseMenuSection('master');
+    }
+    return;
+  }
   const tab=e.target.closest('.sb-item');
   if(tab&&tab.dataset.tab){
     if(tab.dataset.tab==='commission-admin'&&(!CU||CU.role!=='manager')){toast('غير مسموح','e');return;}
@@ -5049,6 +5093,9 @@ document.getElementById('nav-tabs').addEventListener('click',e=>{
     }
     if(tab.dataset.tab!=='branches-followup'&&tab.dataset.tab!=='returns'&&tab.dataset.tab!=='transfers'){
       document.querySelectorAll('#nav-tabs .sb-subitem[data-branch-menu]').forEach(el=>el.classList.remove('on'));
+    }
+    if(tab.dataset.tab!=='master'&&tab.dataset.tab!=='upload'){
+      document.querySelectorAll('#nav-tabs .sb-subitem[data-db-menu]').forEach(el=>el.classList.remove('on'));
     }
     gTab(tab.dataset.tab);
   }
