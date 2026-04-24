@@ -6147,21 +6147,10 @@ async function fetchAPIShipments(){
     };
 
     // Performance: fetch a single delayed stream (delay_days >= startDelay on this API),
-    // then paginate cursors only. Also merge with delayed/with-captain when available
-    // because some APIs split records across these two endpoints.
+    // then paginate cursors only. Keep shipments API isolated from branch/transfers sources.
     const effectiveUrl=new URL(parsedBaseUrl.toString());
     effectiveUrl.searchParams.set('delay_days',String(startDelay));
     await fetchAllPagesForBase(effectiveUrl.toString(),`delay_days>=${startDelay}`);
-    try{
-      const companion=new URL(effectiveUrl.toString());
-      if(/\/external-api\/orders\/delayed\/?$/i.test(companion.pathname)){
-        companion.pathname=companion.pathname.replace(/\/?$/,'/with-captain');
-        await fetchAllPagesForBase(companion.toString(),`with-captain delay_days>=${startDelay}`);
-      }else if(/\/external-api\/orders\/delayed\/with-captain\/?$/i.test(companion.pathname)){
-        companion.pathname=companion.pathname.replace(/\/with-captain\/?$/i,'');
-        await fetchAllPagesForBase(companion.toString(),`delayed delay_days>=${startDelay}`);
-      }
-    }catch(_){}
 
     if(!rawData.length){
       if(el)el.textContent='⚠️ لا بيانات في رد API';
