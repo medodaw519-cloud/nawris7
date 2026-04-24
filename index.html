@@ -2805,6 +2805,25 @@ function normalizeIdentityText(v){
     .replace(/ئ/g,'ي')
     .replace(/\s+/g,' ');
 }
+function persistAPIShipmentsCache(){
+  try{
+    localStorage.setItem('api_shipments',JSON.stringify(apiShipments));
+    return true;
+  }catch(e){
+    try{
+      // Fallback: keep lightweight cache when localStorage quota is exceeded.
+      const slim=(apiShipments||[]).slice(0,1200).map(s=>({
+        id:s.id,tracking_code:s.tracking_code,client_name:s.client_name,receiver_name:s.receiver_name,
+        customer_phone:s.customer_phone,status:s.status,delay_days:s.delay_days,current_branch:s.current_branch,
+        government:s.government,area:s.area,captain:s.captain,raw_status:s.raw_status,fetched_at:s.fetched_at
+      }));
+      localStorage.setItem('api_shipments',JSON.stringify(slim));
+      return true;
+    }catch(_){
+      return false;
+    }
+  }
+}
 function resolveCaptainPhoneStrict(s){
   if(!s)return '';
   const captainKey=normalizeIdentityText(s.captain||s.driver_name||'');
@@ -6231,7 +6250,7 @@ async function fetchAPIShipments(){
     enrichAPICaptainPhones();
 
     // Save to localStorage for persistence
-    localStorage.setItem('api_shipments',JSON.stringify(apiShipments));
+    persistAPIShipmentsCache();
 
     // Log this fetch
     const logEntry={time:new Date().toLocaleString('ar-LY'),count:apiShipments.length,status:'success'};
@@ -7047,7 +7066,7 @@ async function saveJanzourCR(sid,rowIdx){
         s.status='returned';
         s.raw_status='تم الإلغاء/المرتجع';
       }
-      try{localStorage.setItem('api_shipments',JSON.stringify(apiShipments));}catch(e){}
+      persistAPIShipmentsCache();
     }
     refreshJanzourRatesPanels();
     renderJanzour();
@@ -7948,12 +7967,12 @@ async function janzourQuickDelivered(sid){
   const prev={status:s.status,raw:s.raw_status};
   s.status='delivered';
   s.raw_status='تم التسليم';
-  try{localStorage.setItem('api_shipments',JSON.stringify(apiShipments));}catch(e){}
+  persistAPIShipmentsCache();
   const ok=await saveCR(sid,'delivered',NOTE);
   if(ok!==true){
     s.status=prev.status;
     s.raw_status=prev.raw;
-    try{localStorage.setItem('api_shipments',JSON.stringify(apiShipments));}catch(e){}
+    persistAPIShipmentsCache();
     return;
   }
   rebuildJanzourShipments();
@@ -8005,7 +8024,7 @@ function runJanzourCommissionSync(){
     s.branch_commission=bc;
     n++;
   }
-  localStorage.setItem('api_shipments',JSON.stringify(apiShipments));
+  persistAPIShipmentsCache();
   buildJanzourSet();
   refreshJanzourRatesPanels();
   toast('✅ تم تحديث عمولات '+n+' طرداً في نطاق جنزور','s');
