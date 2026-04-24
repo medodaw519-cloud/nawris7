@@ -5914,6 +5914,10 @@ async function fetchAPIShipments(){
         'trackingcode','trackingno','trackingnumber','parcelcode','ordercode','code','awb','reference','orderid','id',
         'الرمز','كود','كودالشحنة','رقمالشحنة','رقمالطلب','رقمالتتبع','رمزالشحنة'
       ].map(keyNorm));
+      const codeLikeKey=(k)=>{
+        const n=keyNorm(k);
+        return n.includes('code')||n.includes('track')||n.includes('awb')||n.includes('orderid')||n.includes('رقم')||n.includes('رمز')||n.includes('كود');
+      };
       const namedCandidates=[
         item?.tracking_code,
         item?.trackingCode,
@@ -5935,7 +5939,15 @@ async function fetchAPIShipments(){
       ];
       try{
         Object.entries(item||{}).forEach(([k,v])=>{
-          if(codeKeySet.has(keyNorm(k)))namedCandidates.push(v);
+          const nk=keyNorm(k);
+          if(codeKeySet.has(nk)||codeLikeKey(nk)){
+            if(typeof v==='string'||typeof v==='number')namedCandidates.push(v);
+            else if(v&&typeof v==='object'){
+              Object.values(v).forEach(sub=>{
+                if(typeof sub==='string'||typeof sub==='number')namedCandidates.push(sub);
+              });
+            }
+          }
         });
       }catch(_){}
       const candidates=namedCandidates
@@ -6211,6 +6223,8 @@ async function fetchAPIShipments(){
     }
 
     // Always show full API data by default after each sync.
+    apiSeg='all';
+    document.querySelectorAll('[data-aseg]').forEach(el=>el.classList.toggle('on',el.dataset.aseg==='all'));
     resetAPIFilters();
 
     // ── MATCH CAPTAIN PHONES FROM drivers_db ──
