@@ -294,6 +294,8 @@ tbody tr:nth-child(5){animation-delay:.1s}
   .segs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .segs::-webkit-scrollbar{display:none}
   .seg{flex-shrink:0;min-height:34px;display:flex;align-items:center;padding:5px 12px;font-size:12px}
+  .master-segs{display:grid !important;grid-template-columns:1fr 1fr;gap:8px;overflow:visible !important;flex-wrap:wrap !important;padding-bottom:0}
+  .master-segs .seg{width:100%;justify-content:center;border-radius:12px}
 
   /* --- Cards --- */
   .card{padding:14px 12px;border-radius:14px}
@@ -533,6 +535,8 @@ html.light a.bo-order-link{color:#1d4ed8}
 .seg{padding:8px 16px;border-radius:99px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;border:1px solid var(--rim2);color:var(--mute);background:var(--bg4);transition:all .2s;min-height:40px;display:inline-flex;align-items:center}
 .seg.on{background:var(--pur);color:#fff;border-color:var(--pur)}
 .seg-n{background:rgba(0,0,0,.25);padding:0 7px;border-radius:99px;margin-right:4px;font-size:11px}
+.master-segs{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:10px}
+.master-segs .seg{border-radius:12px;justify-content:center;min-height:44px;width:100%}
 
 /* ── FILTERS ── */
 .fbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
@@ -1707,8 +1711,11 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
 
   <!-- ══ MASTER DATA ══ -->
   <div class="page manager-only" id="tab-master">
-    <div style="font-size:18px;font-weight:800;margin-bottom:14px">⚙️ البيانات الثابتة</div>
-    <div class="segs" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="font-size:18px;font-weight:800">⚙️ database</div>
+      <button class="btn btn-ghost btn-sm" onclick="gTab('upload')">📥 رفع البيانات</button>
+    </div>
+    <div class="segs master-segs" style="margin-bottom:16px">
       <div class="seg on" data-mseg="regions">🗺️ المناطق</div>
       <div class="seg" data-mseg="branches">🏢 الفروع</div>
       <div class="seg" data-mseg="drivers">👤 المناديب</div>
@@ -1752,7 +1759,10 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
 
   <!-- ══ UPLOAD ══ -->
   <div class="page manager-only" id="tab-upload">
-    <div style="font-size:18px;font-weight:800;margin-bottom:14px">📥 رفع البيانات</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="font-size:18px;font-weight:800">📥 رفع البيانات</div>
+      <button class="btn btn-ghost btn-sm" onclick="gTab('master')">⚙️ database</button>
+    </div>
 
     <!-- API -->
     <div class="card" style="border-right:3px solid var(--pur)">
@@ -4905,9 +4915,12 @@ function setAlpha(l){
 function gTab(id){
   if(id==='api-shipments')id='shipments';
   if(id==='branches-followup')id='returns';
-  if(id==='upload')id='master';
   if(id==='janzour-rates'||id==='service-kpi'||id==='commission-admin')id='home';
-  document.querySelectorAll('#nav-tabs .sb-item').forEach(t=>t.classList.toggle('on',t.dataset.tab===id));
+  document.querySelectorAll('#nav-tabs .sb-item').forEach(t=>{
+    const tId=t.dataset.tab;
+    const active=id==='upload' ? tId==='master' : tId===id;
+    t.classList.toggle('on',active);
+  });
   if(id==='returns'||id==='transfers'){
     const branchesItem=document.querySelector('#nav-tabs .sb-item[data-tab="branches-followup"]');
     if(branchesItem)branchesItem.classList.add('on');
