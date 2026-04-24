@@ -2087,7 +2087,11 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <div class="fg" id="um-rbranches-section">
         <label class="fl">الفروع المسموح باستلام طرودها (تظهر في التعيين)</label>
         <div id="um-rbranches-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-top:6px"></div>
-        <div style="font-size:11px;color:var(--mute);margin-top:6px">حدّد فرعاً واحداً أو أكثر: يُسمح للموظف بإسناد واستلام طرود تنتمي لهذه الفروع فقط (حسب حقل الفرع في بيانات الطرد).</div>
+        <div style="font-size:11px;color:var(--mute);margin-top:6px">حدّد فرعاً واحداً أو أكثر: تُستخدم كقائمة فروع مسموحة عند تفعيل «فرض الإسناد» أدناه (حسب حقل الفرع في بيانات الطرد).</div>
+        <label class="fg" style="display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:10px 12px;background:var(--bg4);border:1px solid var(--rim);border-radius:var(--r3);cursor:pointer;font-size:12px;line-height:1.45">
+          <input type="checkbox" class="um-perm" value="branch-assign-enforce" style="margin-top:3px;accent-color:var(--pur);width:16px;height:16px;flex-shrink:0">
+          <span><strong>🔒 فرض الإسناد حسب الفروع</strong><br><span style="color:var(--mute);font-size:11px">عند التفعيل: يُسمح بإسناد طرود API لهذا الموظف فقط إذا كان فرع الطرد ضمن الفروع المحددة أعلاه. عند الإيقاف: قائمة الفروع لا تقيّد الإسناد.</span></span>
+        </label>
       </div>
     </div>
     <div class="mf">
@@ -2216,6 +2220,7 @@ const ALL_TABS = [
   {id:'master',label:'⚙️ البيانات الثابتة'},
   {id:'upload',label:'📥 رفع البيانات'},
   {id:'users',label:'🔐 المستخدمون'},
+  {id:'branch-assign-enforce',label:'🔒 فرض الإسناد حسب الفروع'},
 ];
 const ALL_TAB_IDS = ALL_TABS.map(t=>t.id);
 const MANAGER_TABS = ALL_TAB_IDS; // managers get all
@@ -2241,6 +2246,12 @@ function loadUsers(){
         const p=parsed[k].perms;
         if(Array.isArray(p)&&p.includes('janzour')&&!p.includes('janzour-rates')){
           p.push('janzour-rates');
+          migrated=true;
+        }
+        const rbRaw=parsed[k].received_branches??parsed[k].received_branch??parsed[k]?.['received-branch']??[];
+        const rbList=Array.isArray(rbRaw)?rbRaw:String(rbRaw||'').split(/[,\n|]/).map(v=>String(v||'').trim()).filter(Boolean);
+        if(rbList.length&&Array.isArray(p)&&!p.includes('branch-assign-enforce')){
+          p.push('branch-assign-enforce');
           migrated=true;
         }
       });
@@ -6161,11 +6172,15 @@ function getUserReceivedBranches(userObj){
   const list=Array.isArray(raw)?raw:String(raw||'').split(/[,\n|]/);
   return list.map(v=>normalizeIdentityText(v)).filter(Boolean);
 }
+function employeeBranchAssignEnforced(userObj){
+  return Array.isArray(userObj?.perms)&&userObj.perms.includes('branch-assign-enforce');
+}
 function canAssignParcelToEmployee(parcel,empName){
   const emp=Object.values(USERS).find(u=>String(u?.name||'')===String(empName||''));
   if(!emp)return false;
+  if(!employeeBranchAssignEnforced(emp))return true;
   const allowed=getUserReceivedBranches(emp);
-  if(!allowed.length)return true;
+  if(!allowed.length)return false;
   const branchNorm=normalizeIdentityText(parcel?.current_branch||parcel?.branch||'');
   if(!branchNorm)return false;
   return allowed.some(b=>branchNorm===b||branchNorm.includes(b)||b.includes(branchNorm));
