@@ -2795,6 +2795,9 @@ function normalizeIdentityText(v){
   return String(v||'')
     .trim()
     .toLowerCase()
+    .replace(/[\u200e\u200f\u202a-\u202e]/g,'')
+    .replace(/[\u0660-\u0669]/g,d=>String(d.charCodeAt(0)-0x0660))
+    .replace(/[\u06f0-\u06f9]/g,d=>String(d.charCodeAt(0)-0x06f0))
     .replace(/[\u064B-\u065F\u0670]/g,'')
     .replace(/[أإآٱ]/g,'ا')
     .replace(/ى/g,'ي')
@@ -6285,7 +6288,7 @@ function renderAPIFetchLog(){
 }
 
 function renderAPIShipments(){
-  const q=(document.getElementById('a-q')?.value||'').toLowerCase();
+  const q=normalizeIdentityText(document.getElementById('a-q')?.value||'');
   const fd=document.getElementById('a-fd')?.value||'';
   const fst=document.getElementById('a-fst')?.value||'';
   const fdays=document.getElementById('a-fdays')?.value||'';
@@ -6354,7 +6357,10 @@ function renderAPIShipments(){
       if(fdays==='31-60'&&(d<31||d>60))return false;
       if(fdays==='60+'&&d<61)return false;
     }
-    if(q&&!`${s.tracking_code} ${s.client_name} ${s.receiver_name} ${s.captain} ${s.customer_phone} ${s.current_branch} ${s.government} ${s.area}`.toLowerCase().includes(q))return false;
+    if(q){
+      const haystack=normalizeIdentityText(`${s.tracking_code} ${s.client_name} ${s.receiver_name} ${s.captain} ${s.customer_phone} ${s.current_branch} ${s.government} ${s.area}`);
+      if(!haystack.includes(q))return false;
+    }
     return true;
   }).sort((a,b)=>{
     const av=(()=>{
