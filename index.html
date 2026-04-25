@@ -6271,11 +6271,10 @@ async function fetchAPIShipments(){
       const looksLikeParcelCode=v=>{
         if(!v||v.length<4||v.length>48)return false;
         if(/\s/.test(v))return false;
-        // Accept numeric codes and numeric+R suffix as explicitly required.
-        if(/^[0-9]+[Rr]?$/.test(v))return true;
-        // Keep broader support for mixed alphanumeric codes coming from some stores.
-        if(!/\d/.test(v))return false;
-        return/^[A-Za-z0-9_-]+$/.test(v);
+        // UI/API regex: allow alphanumeric codes including trailing letters like R.
+        if(!/^[\dA-Za-z]+$/.test(v))return false;
+        // Keep parcel sanity: code should include at least one digit.
+        return /\d/.test(v);
       };
       // Hard fix: if payload has "code", always treat it as text and use it directly.
       const payloadCode=cleanCodeValue(item?.code);
@@ -6581,6 +6580,16 @@ async function fetchAPIShipments(){
     }
 
     rawData=[...rawByCode.values()];
+    try{
+      const rawRCodes=rawData
+        .map(r=>String(r?.code??r?.tracking_code??r?.trackingCode??'').trim().toUpperCase())
+        .filter(c=>/R$/i.test(c));
+      console.log('[API RAW DEBUG]',{
+        total_raw_items:rawData.length,
+        r_suffix_count:rawRCodes.length,
+        r_suffix_sample:rawRCodes.slice(0,40)
+      });
+    }catch(_){}
 
     if(!rawData.length){
       if(el)el.textContent='⚠️ لا بيانات في رد API';
@@ -6651,6 +6660,16 @@ async function fetchAPIShipments(){
         branch_commission:null
       });
     }
+    try{
+      const mappedRCodes=apiShipments
+        .map(s=>String(s?.tracking_code||'').trim().toUpperCase())
+        .filter(c=>/R$/i.test(c));
+      console.log('[API MAPPED DEBUG]',{
+        total_mapped_items:apiShipments.length,
+        r_suffix_count:mappedRCodes.length,
+        r_suffix_sample:mappedRCodes.slice(0,40)
+      });
+    }catch(_){}
     reconcileApiProcessedFromStatus(apiShipments);
 
     // Always show full API data by default after each sync.
@@ -6970,6 +6989,24 @@ function renderAPIShipments(){
     return aSortDir==='asc'?cmp:-cmp;
   });
   updateAPISortHeaderIcons();
+  try{
+    const allRCodes=apiShipments
+      .map(s=>String(s?.tracking_code||'').trim().toUpperCase())
+      .filter(c=>/R$/i.test(c));
+    const visibleRCodes=list
+      .map(s=>String(s?.tracking_code||'').trim().toUpperCase())
+      .filter(c=>/R$/i.test(c));
+    const visibleSet=new Set(visibleRCodes);
+    const hiddenRCodes=allRCodes.filter(c=>!visibleSet.has(c));
+    console.log('[API TABLE DEBUG]',{
+      api_total:apiShipments.length,
+      table_filtered_total:list.length,
+      all_r_suffix_count:allRCodes.length,
+      visible_r_suffix_count:visibleRCodes.length,
+      hidden_r_suffix_count:hiddenRCodes.length,
+      hidden_r_suffix_sample:hiddenRCodes.slice(0,40)
+    });
+  }catch(_){}
   apiFilteredData=list.slice();
   apiFilteredIds=apiFilteredData.map(s=>String(s.id));
 
