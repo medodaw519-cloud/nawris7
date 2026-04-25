@@ -1283,7 +1283,6 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
     <!-- Filters -->
     <div class="fbar">
       <button class="btn btn-ghost btn-sm" onclick="openApiFiltersDrawer()">⚙️ تصفية</button>
-      <button class="btn btn-ghost btn-sm" onclick="resetAPIFilters();renderAPIShipments();" title="مسح الفلاتر">✕ مسح</button>
       <label class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:6px;cursor:pointer">
         <input type="checkbox" id="a-show-processed" checked onchange="renderAPIShipments()">
         إظهار المعالَجة
@@ -1293,7 +1292,10 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
     <aside class="flt-drawer" id="api-filters-drawer" aria-hidden="true">
       <div class="flt-drawer-head">
         <strong style="font-size:14px">تصفية الطرود</strong>
-        <button class="btn btn-ghost btn-sm" onclick="closeApiFiltersDrawer()">✕ إغلاق</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="resetAPIFilters();renderAPIShipments();" title="مسح كل الفلاتر">✕ مسح</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeApiFiltersDrawer()">✕ إغلاق</button>
+        </div>
       </div>
       <div class="flt-drawer-body">
         <input class="fi fi-grow" id="a-q" type="text" placeholder="🔍 بحث بالكود، المتجر، المستلم، المندوب، الفرع..." oninput="renderAPIShipments()">
