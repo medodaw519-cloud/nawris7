@@ -4854,19 +4854,13 @@ function sendToDriver(name,phone){
 }
 function buildSelectedStatusMessage(recipientName,items){
   const rows=Array.isArray(items)?items:[];
-  const delayedCodes=[...new Set(rows
-    .filter(s=>String(s?.status||'').toLowerCase()!=='returned'&&cls(Number(s?.delay_days||0))!=='ok')
-    .map(s=>String(s?.tracking_code||'').trim())
-    .filter(Boolean))];
-  const returnedCodes=[...new Set(rows
-    .filter(s=>String(s?.status||'').toLowerCase()==='returned')
-    .map(s=>String(s?.tracking_code||'').trim())
-    .filter(Boolean))];
-  const allCodes=[...new Set(rows.map(s=>String(s?.tracking_code||'').trim()).filter(Boolean))];
+  const delayed=rows.filter(s=>String(s?.status||'').toLowerCase()!=='returned'&&cls(Number(s?.delay_days||0))!=='ok');
+  const returned=rows.filter(s=>String(s?.status||'').toLowerCase()==='returned');
+  const fmtRow=(s)=>`• ${s.tracking_code} — ${s.delay_days||0} يوم`;
   const sections=[];
-  if(delayedCodes.length)sections.push(`🔴 طرود متأخرة (${delayedCodes.length}):\n${delayedCodes.map(c=>`• ${c}`).join('\n')}`);
-  if(returnedCodes.length)sections.push(`↩️ طرود مرتجعة (${returnedCodes.length}):\n${returnedCodes.map(c=>`• ${c}`).join('\n')}`);
-  if(!sections.length&&allCodes.length)sections.push(`📦 الأكواد المحددة (${allCodes.length}):\n${allCodes.map(c=>`• ${c}`).join('\n')}`);
+  if(delayed.length)sections.push(`🔴 طرود متأخرة (${delayed.length}):\n${delayed.map(fmtRow).join('\n')}`);
+  if(returned.length)sections.push(`↩️ طرود مرتجعة (${returned.length}):\n${returned.map(fmtRow).join('\n')}`);
+  if(!sections.length&&rows.length)sections.push(`📦 الأكواد المحددة (${rows.length}):\n${rows.map(fmtRow).join('\n')}`);
   return `السلام عليكم ${recipientName||'المندوب'}\n🕊️ ${CFG.company}\n\n${sections.join('\n\n')}\n\nيرجى المتابعة والتحديث اليوم.\n— ${CFG.company}`;
 }
 function sendAllDrivers(){
