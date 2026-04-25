@@ -7409,7 +7409,10 @@ function renderAPIShipments(){
   const processedStatuses=new Set(['delivered','processed']);
   if(!manualStatusFilter&&!hasExplicitQuery){
     if(showProcessed){
-      // Show: current delivered/processed + items that disappeared from API
+      // Show processed from 3 sources:
+      // 1. Current API parcels with delivered/processed status
+      const fromCurrent=list.filter(s=>processedStatuses.has(s.status));
+      // 2. Parcels that disappeared from API (snapshot-based)
       const currentApiCodes=new Set(apiShipments.map(s=>s.tracking_code).filter(Boolean));
       let apiSeenBefore=[];
       try{apiSeenBefore=JSON.parse(localStorage.getItem('api_seen_codes')||'[]');}catch{}
@@ -7418,10 +7421,22 @@ function renderAPIShipments(){
         .filter(tc=>!currentApiCodes.has(tc))
         .map(tc=>{
           const c=apiCache[tc]||{};
-          return {id:'api_'+tc,tracking_code:tc,client_name:c.client||'',receiver_name:c.receiver||'',customer_phone:c.phone||'',captain:c.captain||'',current_branch:c.branch||'',government:c.gov||'',area:c.area||'',delay_days:c.delay||0,status:c.status||'processed',source:'api',_cached:true};
+          return {id:'api_'+tc,tracking_code:tc,client_name:c.client||'',receiver_name:c.receiver||'',customer_phone:c.phone||'',captain:c.captain||'',current_branch:c.branch||'',government:c.gov||'',area:c.area||'',delay_days:c.delay||0,status:'processed',source:'api',_cached:true};
         });
-      const fromCurrent=list.filter(s=>processedStatuses.has(s.status));
-      list=[...fromCurrent,...disappearedShipments];
+      // 3. Parcels with contact result in Supabase that are no longer in API
+      const allShownCodes=new Set([...fromCurrent.map(s=>s.tracking_code),...disappearedShipments.map(s=>s.tracking_code)]);
+      const fromContactDB=(contact_results_db||[])
+        .filter(cr=>{
+          const tc=String(cr.tracking_code||'').trim();
+          if(!tc||currentApiCodes.has(tc)||allShownCodes.has(tc))return false;
+          return cr.result==='solved'||cr.result==='contacted';
+        })
+        .map(cr=>{
+          const tc=String(cr.tracking_code||'').trim();
+          const c=apiCache[tc]||{};
+          return {id:'api_'+tc,tracking_code:tc,client_name:c.client||'',receiver_name:c.receiver||'',customer_phone:c.phone||'',captain:c.captain||'',current_branch:c.branch||'',government:c.gov||'',area:c.area||'',delay_days:c.delay||0,status:'processed',source:'api',_cached:true};
+        });
+      list=[...fromCurrent,...disappearedShipments,...fromContactDB];
     }else{
       list=list.filter(s=>{
         if(s.status==='returned')return true;
