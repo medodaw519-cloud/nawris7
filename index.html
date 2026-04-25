@@ -2733,7 +2733,7 @@ async function loadReturns(){
       branch:String(r.current_branch||r.branch_name||r.branch||'—').trim()||'—',
       status_text:String(r.status||'في الشركة').trim()||'في الشركة',
       shipments:{
-        tracking_code:r.shipment_code||r.tracking_code||r.code||'—',
+        tracking_code:r.return_tracking_code||r.return_code||r.shipment_code||r.tracking_code||r.code||'—',
         customer_name:r.customer_name||r.client_name||r.receiver_name||'—',
         customer_phone:r.receiver_phone||r.customer_phone||r.phone||'—'
       },
@@ -2789,7 +2789,7 @@ async function loadTransfers(){
     });
     transfers_data=transferRows.map((r,i)=>{
       const shipmentCode=String(
-        r.shipment_code||r.tracking_code||r.code||r.order_code||r.id||'—'
+        r.return_tracking_code||r.return_code||r.shipment_code||r.tracking_code||r.code||r.order_code||r.id||'—'
       ).trim()||'—';
       const customerName=String(
         r.customer_name||r.client_name||r.receiver_name||r.reciver_name||'—'
@@ -6251,7 +6251,7 @@ async function fetchAPIShipments(){
     // ── CURSOR PAGINATION FETCH ──
     // API returns 100 items per page with next_cursor for pagination
     let rawData=[];
-    const seen=new Set();
+    const rawByCode=new Map();
     const normalizedBaseUrl=url.replace(/[?&]cursor=[^&]*/g,'').replace(/[?&]$/,'');
     const pickTrackingCode=(item,fallbackIndex=0)=>{
       const keyNorm=(k)=>String(k||'')
@@ -6270,10 +6270,15 @@ async function fetchAPIShipments(){
       const namedCandidates=[
         item?.tracking_code,
         item?.trackingCode,
+        item?.return_tracking_code,
+        item?.return_code,
+        item?.return_order_code,
+        item?.reverse_tracking_code,
         item?.tracking_no,
         item?.tracking_number,
         item?.parcel_code,
         item?.ParcelCode,
+        item?.shipment_code,
         item?.order_code,
         item?.code,
         item?.['الرمز'],
@@ -6303,16 +6308,36 @@ async function fetchAPIShipments(){
         .map(v=>String(v||'').trim().replace(/[\u200e\u200f\u202a-\u202e]/g,''))
         .filter(Boolean);
       if(!candidates.length)return 'API-'+Date.now()+'-'+fallbackIndex;
-      // Prefer explicit mixed codes first (e.g. 3055045R), then numeric-only codes.
+      const looksLikeParcelCode=v=>{
+        if(!v||v.length<4||v.length>48)return false;
+        if(/\s/.test(v))return false;
+        if(!/\d/.test(v))return false;
+        return/^[A-Za-z0-9_-]+$/.test(v);
+      };
+      const hits=candidates.map((v,idx)=>({v,idx})).filter(x=>looksLikeParcelCode(x.v));
+      if(hits.length){
+        const score=v=>{
+          let s=0;
+          if(/[A-Za-z]/.test(v))s+=42;
+          if(/^\d{8,}$/.test(v))s-=35;
+          if(/[rR]$/.test(v))s+=28;
+          s+=Math.min((v.match(/\d/g)||[]).length,14);
+          return s;
+        };
+        hits.sort((a,b)=>{
+          const ds=score(b.v)-score(a.v);
+          if(ds!==0)return ds;
+          return a.idx-b.idx;
+        });
+        return hits[0].v.toUpperCase();
+      }
       const strictMixed=candidates.find(v=>/^(?=.*\d)(?=.*[A-Za-z])[A-Za-z]?\d{4,}[A-Za-z]?$/.test(v));
       if(strictMixed)return strictMixed.toUpperCase();
       const strictDigits=candidates.find(v=>/^\d{4,}$/.test(v));
       if(strictDigits)return strictDigits;
-      // Then any compact alphanumeric token without spaces (avoid names/phrases).
       const compactToken=candidates.find(v=>/^[A-Za-z0-9_-]{5,30}$/.test(v)&&/\d/.test(v));
       if(compactToken)return compactToken.toUpperCase();
-      // Fallback to prioritized tracking fields only.
-      return candidates[0].toUpperCase();
+      return String(candidates[0]||'').toUpperCase();
     };
     const getPageRows=(json)=>{
       if(Array.isArray(json))return json;
@@ -6429,15 +6454,25 @@ async function fetchAPIShipments(){
     };
 
     const parsedBaseUrl=new URL(normalizedBaseUrl,window.location.origin);
+    const delayParamRaw=String(parsedBaseUrl.searchParams.get('delay_days')||'').trim();
+    const parsedDelay=/^\d+$/.test(delayParamRaw)?parseInt(delayParamRaw,10):null;
     const MAX_PAGES=500; // safety limit for very large APIs
+    const delayOfRaw=(it)=>parseInt(it?.delay_days||it?.[delayField]||it?.delay||0)||0;
 
     const appendUniqueItems=(items)=>{
-      let added=0;
+      let newKeys=0;
       for(const item of items){
-        const code=pickTrackingCode(item,added);
-        if(code&&!seen.has(code)){seen.add(code);rawData.push(item);added++;}
+        const code=pickTrackingCode(item,newKeys);
+        if(!code)continue;
+        const prev=rawByCode.get(code);
+        if(!prev){
+          rawByCode.set(code,item);
+          newKeys++;
+          continue;
+        }
+        if(delayOfRaw(item)>delayOfRaw(prev))rawByCode.set(code,item);
       }
-      return added;
+      return newKeys;
     };
 
     const fetchAllPagesForBase=async(baseUrl,label)=>{
@@ -6465,14 +6500,14 @@ async function fetchAPIShipments(){
           }
           seenCursors.add(cursorForPage);
         }
-        if(el)el.textContent=`⏳ ${label} — صفحة ${pageNum}... [${rawData.length} طرد]`;
+        if(el)el.textContent=`⏳ ${label} — صفحة ${pageNum}... [${rawByCode.size} طرد]`;
 
         let pageResult=null;
         try{
           pageResult=await fetchPageWithRetry(pageUrl,cursorForPage,2);
         }catch(fetchErr){
           // Don't fully block users if later pages fail (e.g. unstable cursor modes / server 500).
-          if(rawData.length>0){
+          if(rawByCode.size>0){
             console.warn(`Pagination warning (${label}): stopped at page ${pageNum} due to ${fetchErr?.message||fetchErr}`);
             break;
           }
@@ -6484,7 +6519,7 @@ async function fetchAPIShipments(){
         nextPageUrl=getNextPageUrl(json,pageUrl)||getNextPageByNumber(json,pageUrl)||'';
         dayRawCount+=pageData.length;
         const newCount=appendUniqueItems(pageData);
-        console.log(`${label} | Page ${pageNum}: ${pageData.length} items, ${newCount} new, total: ${rawData.length}, next_cursor: ${nextCursor?'yes':'no'}, next_url: ${nextPageUrl?'yes':'no'}, via: ${pageResult.mode}`);
+        console.log(`${label} | Page ${pageNum}: ${pageData.length} items, ${newCount} new keys, total: ${rawByCode.size}, next_cursor: ${nextCursor?'yes':'no'}, next_url: ${nextPageUrl?'yes':'no'}, via: ${pageResult.mode}`);
 
         if(!pageData.length)break;
       }while((nextPageUrl||nextCursor)&&pageNum<MAX_PAGES);
@@ -6499,7 +6534,27 @@ async function fetchAPIShipments(){
       // Backward-compatible default only when user didn't provide delay_days explicitly.
       effectiveUrl.searchParams.set('delay_days','2');
     }
+    const startDelay=parseInt(String(effectiveUrl.searchParams.get('delay_days')||'2'),10)||2;
     await fetchAllPagesForBase(effectiveUrl.toString(),`api fetch`);
+
+    if(parsedDelay===null&&rawByCode.size>0){
+      const vals=[...rawByCode.values()];
+      const delays=vals.map(delayOfRaw);
+      const maxD=Math.max(...delays);
+      const minD=Math.min(...delays);
+      const allSameAsThreshold=minD===maxD&&maxD===startDelay;
+      if(allSameAsThreshold){
+        if(el)el.textContent='⏳ يبدو أن الـ API يصفّي حسب عتبة تأخير ثابتة — جلب دفعات إضافية (3…25 يوم)…';
+        const extraDelays=[25,20,15,10,7,5,4,3].filter(d=>d!==startDelay);
+        for(const d of extraDelays){
+          const sweepUrl=new URL(parsedBaseUrl.toString());
+          sweepUrl.searchParams.set('delay_days',String(d));
+          await fetchAllPagesForBase(sweepUrl.toString(),`تأخير ${d}ي`);
+        }
+      }
+    }
+
+    rawData=[...rawByCode.values()];
 
     if(!rawData.length){
       if(el)el.textContent='⚠️ لا بيانات في رد API';
