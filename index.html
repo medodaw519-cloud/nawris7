@@ -7239,17 +7239,17 @@ function renderAPIShipments(){
   // ── "إظهار المعالَجة" Toggle Logic ──
   // Checked  → show ONLY processed/delivered shipments.
   // Unchecked → hide processed/delivered (default — show active shipments).
+  // Uses API status directly (no sessionStorage dependency) so it works on all devices.
   // Bypass: search query or manual status filter take priority.
   const manualStatusFilter=Boolean(fst);
   const processedStatuses=new Set(['delivered','processed']);
   if(!manualStatusFilter&&!hasExplicitQuery){
     if(showProcessed){
-      list=list.filter(s=>processedStatuses.has(s.status)||apiProcessedCodes.has(String(s.tracking_code||'')));
+      list=list.filter(s=>processedStatuses.has(s.status));
     }else{
       list=list.filter(s=>{
         if(s.status==='returned')return true;
         if(processedStatuses.has(s.status))return false;
-        if(apiProcessedCodes.has(String(s.tracking_code||'')))return false;
         return true;
       });
     }
