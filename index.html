@@ -6564,7 +6564,8 @@ async function fetchAPIShipments(){
 
     // Always sweep key delay thresholds to catch high-delay shipments (e.g. R-codes at 300+ days).
     // The API may filter by exact delay_days value, so we must request each threshold explicitly.
-    if(parsedDelay===null&&rawByCode.size>0){
+    // Run unconditionally — even when user provides delay_days in the URL.
+    if(rawByCode.size>0){
       const sizeBefore=rawByCode.size;
       const sweepDelays=[400,350,300,250,200,150,100,75,60,50,40,35,30,25,20,15,10,7,5,4,3].filter(d=>d!==startDelay);
       if(el)el.textContent=`⏳ جلب دفعات إضافية (${sweepDelays.length} عتبة تأخير)…`;
