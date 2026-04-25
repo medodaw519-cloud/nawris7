@@ -6902,10 +6902,17 @@ function renderAPIShipments(){
     list=list.filter(s=>String(assignments[s.tracking_code]||'')===String(myName));
   }
   const forceShowProcessedForStatus=(fst==='returned'||fst==='delivered');
-  // When user searches by code/text, do not hide processed rows.
-  // Never hide returned (R-code) shipments — they need follow-up.
+  // When "إظهار المعالَجة" is unchecked, hide delivered/processed shipments.
+  // Always keep returned (R-code) shipments visible — they need follow-up.
+  // Bypass filter when user searches by code/text or filters by returned/delivered status.
   if(!showProcessed&&!forceShowProcessedForStatus&&!hasExplicitQuery){
-    list=list.filter(s=>s.status==='returned'||!apiProcessedCodes.has(String(s.tracking_code||'')));
+    const hiddenStatuses=new Set(['delivered','processed']);
+    list=list.filter(s=>{
+      if(s.status==='returned')return true;
+      if(hiddenStatuses.has(s.status))return false;
+      if(apiProcessedCodes.has(String(s.tracking_code||'')))return false;
+      return true;
+    });
   }
 
   // Segment filter
