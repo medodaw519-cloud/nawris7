@@ -1143,8 +1143,22 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         </select>
       </div>
     </aside>
-    <!-- Bulk WhatsApp per branch -->
-    <div id="returns-branch-wa" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+    <!-- واتساب الفروع -->
+    <div class="card" style="border-right:3px solid var(--wa);margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="font-size:14px;font-weight:700">💬 واتساب الفروع</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <div style="flex:1;min-width:180px">
+          <label style="font-size:11px;color:var(--mute);display:block;margin-bottom:4px">اختر الفرع</label>
+          <select class="fi" id="r-wa-branch" style="width:100%">
+            <option value="">— اختر فرع —</option>
+          </select>
+        </div>
+        <button class="btn btn-wa btn-sm" onclick="sendBranchWA()" style="padding:8px 16px;font-size:12px">💬 إرسال واتساب</button>
+      </div>
+    </div>
+
     <div style="background:var(--bg3);border:1px solid var(--rim);border-radius:var(--r);overflow:hidden">
       <div style="padding:10px 16px;border-bottom:1px solid var(--rim);display:flex;align-items:center;gap:8px">
         <span style="font-size:13px;font-weight:700">طرود في الشركة</span>
@@ -3951,22 +3965,20 @@ function renderReturns(){
   const cntEl=document.getElementById('r-cnt');
   if(cntEl)cntEl.textContent=list.length;
   if(!tbody)return;
-  if(!list.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:36px;color:var(--mute)">لا توجد بيانات</td></tr>';document.getElementById('returns-branch-wa').innerHTML='';return;}
+  if(!list.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:36px;color:var(--mute)">لا توجد بيانات</td></tr>';return;}
 
-  // Build branch WhatsApp buttons
+  // Build branch WhatsApp dropdown
   const branchGroups={};
-  list.forEach(r=>{
-    const br=String(r.branch||r.branches?.name||'').trim()||'بدون فرع';
-    if(!branchGroups[br])branchGroups[br]=[];
-    branchGroups[br].push(r);
+  returns_data.forEach(r=>{
+    const br=String(r.branch||r.branches?.name||'').trim();
+    if(!br)return;
+    if(!branchGroups[br])branchGroups[br]=0;
+    branchGroups[br]++;
   });
-  const waDiv=document.getElementById('returns-branch-wa');
-  if(waDiv){
-    waDiv.innerHTML=Object.entries(branchGroups).map(([br,items])=>{
-      const brn=branches.find(b=>b.name&&(b.name===br||b.name.includes(br)||br.includes(b.name)));
-      const ph=brn?.manager_phone||'';
-      return `<button class="btn btn-wa btn-sm" onclick="waReturnBranch('${br.replace(/'/g,"\\'")}')" style="font-size:11px;padding:5px 10px" title="${ph||'لا يوجد رقم'}">💬 ${br} (${items.length})</button>`;
-    }).join('');
+  const waSel=document.getElementById('r-wa-branch');
+  if(waSel){
+    const current=waSel.value;
+    waSel.innerHTML='<option value="">— اختر فرع —</option>'+Object.entries(branchGroups).sort((a,b)=>a[0].localeCompare(b[0],'ar')).map(([br,cnt])=>`<option value="${br}" ${current===br?'selected':''}>${br} (${cnt} طرد)</option>`).join('');
   }
 
   tbody.innerHTML=list.map((r,idx)=>{
@@ -4016,6 +4028,11 @@ function waReturnRow(tc,target){
     const msg=`السلام عليكم ${r.drivers?.name||''} 👋\n🕊️ ${CFG.company}\n\nيوجد طرد في الشركة بانتظار التوصيل:\n📦 كود: ${tc}\n👤 العميل: ${r.shipments?.customer_name||'—'}\n📱 هاتف: ${r.shipments?.customer_phone||'—'}\n🏢 الفرع: ${r.branch||'—'}\n⏱️ التأخير: ${days} يوم\n\nيرجى الاستلام والتوصيل\n— ${CFG.company}`;
     openWAUrl(ph,msg);
   }
+}
+function sendBranchWA(){
+  const brName=document.getElementById('r-wa-branch')?.value;
+  if(!brName){toast('اختر فرع أولاً','w');return;}
+  waReturnBranch(brName);
 }
 function waReturnBranch(brName){
   const brn=branches.find(b=>b.name&&(b.name===brName||b.name.includes(brName)||brName.includes(b.name)));
