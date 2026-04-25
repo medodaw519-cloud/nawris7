@@ -1140,8 +1140,30 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
         </select>
       </div>
     </aside>
-    <div id="returns-list" class="branch-list" aria-live="polite">
-      <div class="branch-empty">لا توجد بيانات</div>
+    <!-- Bulk WhatsApp per branch -->
+    <div id="returns-branch-wa" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+    <div style="background:var(--bg3);border:1px solid var(--rim);border-radius:var(--r);overflow:hidden">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--rim);display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px;font-weight:700">طرود في الشركة</span>
+        <span class="badge b-gold" id="r-cnt">0</span>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>#</th>
+            <th>الكود</th>
+            <th>العميل</th>
+            <th>المندوب</th>
+            <th>الفرع</th>
+            <th>الموقع</th>
+            <th>التأخير</th>
+            <th>نتيجة التواصل</th>
+            <th>ملاحظة</th>
+            <th>واتساب</th>
+          </tr></thead>
+          <tbody id="returns-tbody"><tr><td colspan="10" style="text-align:center;padding:36px;color:var(--mute)">لا توجد بيانات</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -2978,7 +3000,7 @@ function resolveCaptainPhoneStrict(s){
 // Contact Result helpers — Supabase first, localStorage fallback
 function getCR(sid){
   const sidStr=String(sid||'').trim();
-  const sidAsCode=sidStr.startsWith('api_')?sidStr.slice(4):sidStr;
+  const sidAsCode=sidStr.startsWith('api_')?sidStr.slice(4):sidStr.startsWith('ret_')?sidStr.slice(4):sidStr;
   const db=contact_results_db.find(r=>
     String(r.shipment_id||'')===sidStr
     || String(r.tracking_code||'')===sidStr
@@ -2993,7 +3015,7 @@ async function saveCR(sid,result,note){
          ||apiShipments.find(x=>String(x.id)===String(sid));
   const userName=CU?.name||'—';
   const sidStr=String(sid||'').trim();
-  const sidAsCode=sidStr.startsWith('api_')?sidStr.slice(4):sidStr;
+  const sidAsCode=sidStr.startsWith('api_')?sidStr.slice(4):sidStr.startsWith('ret_')?sidStr.slice(4):sidStr;
   const trackingCode=String(s?.tracking_code||sidAsCode||'').trim();
   const payload={shipment_id:sidStr,tracking_code:trackingCode,result:result||'',note:note||'',updated_by:userName};
   try{
@@ -3921,34 +3943,114 @@ function renderReturns(){
   const setTxt=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=String(val);};
   setTxt('r-kpi-total',total);setTxt('r-kpi-way',onWay);setTxt('r-kpi-delayed',delayed);setTxt('r-kpi-delivered',delivered);
 
-  const listEl=document.getElementById('returns-list');
-  if(!listEl)return;
-  if(!list.length){listEl.innerHTML='<div class="branch-empty">لا توجد بيانات</div>';return;}
-  const frag=document.createDocumentFragment();
+  // Render table
+  const tbody=document.getElementById('returns-tbody');
+  const cntEl=document.getElementById('r-cnt');
+  if(cntEl)cntEl.textContent=list.length;
+  if(!tbody)return;
+  if(!list.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:36px;color:var(--mute)">لا توجد بيانات</td></tr>';document.getElementById('returns-branch-wa').innerHTML='';return;}
+
+  // Build branch WhatsApp buttons
+  const branchGroups={};
   list.forEach(r=>{
-    const row=document.createElement('div');
-    row.className='branch-row';
-    const c1=document.createElement('div');c1.className='code-cell';c1.innerHTML=backofficeOrderLinkHtml(r.shipments?.tracking_code||'—');
-    const c2=document.createElement('div');
-    c2.innerHTML=`<div style="font-weight:700">${r.shipments?.customer_name||'—'}</div><div style="font-size:11px;color:var(--mute)">${r.shipments?.customer_phone||'—'}</div>`;
-    const c3=document.createElement('div');
-    c3.innerHTML=`<div>${r.drivers?.name||'—'}</div><div style="font-size:11px;color:var(--mute)">${r.city||'—'} • ${r.branch||'—'}</div>`;
-    const c4=document.createElement('div');c4.innerHTML=`<span class="badge b-orn">${rsnMap[r.reason]||r.reason||'—'}</span>`;
-    const c5=document.createElement('div');
-    const delayTxt=Number.isFinite(Number(r.delay_days))?` • ${Number(r.delay_days)} يوم`:'';
-    c5.innerHTML=`<span class="badge ${r.location==='returned_to_store'?'b-grn':r.location==='in_warehouse'?'b-gold':'b-red'}">${locMap[r.location]||r.location||'—'}</span><div style="font-size:11px;color:var(--mute);margin-top:4px">${r.status_text||'—'}${delayTxt}</div>`;
-    const c6=document.createElement('div');
-    const btn=document.createElement('button');
-    btn.className='btn btn-ghost btn-sm';
-    btn.textContent='تحديث الموقع';
-    btn.onclick=()=>updateRetLoc(r.id,r.location);
-    c6.appendChild(btn);
-    row.append(c1,c2,c3,c4,c5,c6);
-    frag.appendChild(row);
+    const br=String(r.branch||r.branches?.name||'').trim()||'بدون فرع';
+    if(!branchGroups[br])branchGroups[br]=[];
+    branchGroups[br].push(r);
   });
-  listEl.innerHTML='';
-  listEl.appendChild(frag);
+  const waDiv=document.getElementById('returns-branch-wa');
+  if(waDiv){
+    waDiv.innerHTML=Object.entries(branchGroups).map(([br,items])=>{
+      const brn=branches.find(b=>b.name&&(b.name===br||b.name.includes(br)||br.includes(b.name)));
+      const ph=brn?.manager_phone||'';
+      return `<button class="btn btn-wa btn-sm" onclick="waReturnBranch('${br.replace(/'/g,"\\'")}')" style="font-size:11px;padding:5px 10px" title="${ph||'لا يوجد رقم'}">💬 ${br} (${items.length})</button>`;
+    }).join('');
+  }
+
+  tbody.innerHTML=list.map((r,idx)=>{
+    const tc=r.shipments?.tracking_code||'—';
+    const sid='ret_'+tc;
+    const crData=getCR(sid);
+    const cResult=crData.result||'';
+    const note=(crData.note||'').replace(/"/g,'&amp;quot;');
+    const brn=branches.find(b=>b.name&&(b.name===(r.branch||'')||b.name.includes(r.branch||'')||(r.branch||'').includes(b.name)));
+    const brPhone=brn?.manager_phone||'';
+    const days=Number(r.delay_days||0)||0;
+    return `<tr style="${days>=3?'background:rgba(255,58,92,.04)':''}">
+      <td style="color:var(--dim);font-size:10px;text-align:center">${idx+1}</td>
+      <td class="code-cell">${backofficeOrderLinkHtml(tc)}</td>
+      <td style="font-size:12px"><div style="font-weight:600">${r.shipments?.customer_name||'—'}</div><div style="font-size:10px;color:var(--mute)">${r.shipments?.customer_phone||''}</div></td>
+      <td style="font-size:11px">${r.drivers?.name||'—'}</td>
+      <td style="font-size:11px">${r.branch||'—'}</td>
+      <td><span class="badge ${r.location==='returned_to_store'?'b-grn':r.location==='in_warehouse'?'b-gold':'b-red'}">${locMap[r.location]||r.location||'—'}</span></td>
+      <td>${dBadge(days)}</td>
+      <td><select class="rcr-sel" data-rsid="${sid}" data-code="${tc}" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:2px 4px;font-size:10px;color:var(--white);font-family:var(--font)">
+        <option value="" ${!cResult?'selected':''}>—</option>
+        <option value="solved" ${cResult==='solved'?'selected':''}>✅ تم الحل</option>
+        <option value="contacted" ${cResult==='contacted'?'selected':''}>📞 تم التواصل</option>
+        <option value="no_answer" ${cResult==='no_answer'?'selected':''}>📵 لا يرد</option>
+        <option value="pending" ${cResult==='pending'?'selected':''}>⏳ قيد المتابعة</option>
+      </select></td>
+      <td><input type="text" value="${note}" placeholder="ملاحظة..." data-rsid="${sid}" data-code="${tc}" class="rnote-inp" style="background:var(--bg4);border:1px solid var(--rim);border-radius:4px;padding:3px 7px;font-size:11px;color:var(--white);font-family:var(--font);width:90px"></td>
+      <td style="white-space:nowrap"><div style="display:flex;gap:3px">
+        ${brPhone?`<button class="btn btn-wa btn-sm" onclick="waReturnRow('${tc.replace(/'/g,"\\'")}','branch')" style="font-size:10px;padding:3px 6px" title="واتساب الفرع ${brPhone}">🏢</button>`:''}
+        ${r.drivers?.phone?`<button class="btn btn-ghost btn-sm" onclick="waReturnRow('${tc.replace(/'/g,"\\'")}','driver')" style="font-size:10px;padding:3px 6px;border-color:var(--wa);color:var(--wa)" title="واتساب المندوب">🚗</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
 }
+// ── Returns WhatsApp & Contact Results ──
+function waReturnRow(tc,target){
+  const r=returns_data.find(x=>(x.shipments?.tracking_code||'')===tc);
+  if(!r)return;
+  const days=Number(r.delay_days||0)||0;
+  if(target==='branch'){
+    const brn=branches.find(b=>b.name&&(b.name===(r.branch||'')||b.name.includes(r.branch||'')||(r.branch||'').includes(b.name)));
+    const ph=normPhone(brn?.manager_phone||'');
+    const msg=`السلام عليكم 👋\n🕊️ ${CFG.company}\n\nتذكير بطرد في الشركة:\n📦 كود الطرد: ${tc}\n👤 العميل: ${r.shipments?.customer_name||'—'}\n📱 هاتف العميل: ${r.shipments?.customer_phone||'—'}\n🚗 المندوب: ${r.drivers?.name||'—'}\n⏱️ التأخير: ${days} يوم\n\n⚠️ يرجى اتخاذ إجراء\n— ${CFG.company}`;
+    openWAUrl(ph,msg);
+  }else{
+    const ph=normPhone(r.drivers?.phone||'');
+    const msg=`السلام عليكم ${r.drivers?.name||''} 👋\n🕊️ ${CFG.company}\n\nيوجد طرد في الشركة بانتظار التوصيل:\n📦 كود: ${tc}\n👤 العميل: ${r.shipments?.customer_name||'—'}\n📱 هاتف: ${r.shipments?.customer_phone||'—'}\n🏢 الفرع: ${r.branch||'—'}\n⏱️ التأخير: ${days} يوم\n\nيرجى الاستلام والتوصيل\n— ${CFG.company}`;
+    openWAUrl(ph,msg);
+  }
+}
+function waReturnBranch(brName){
+  const brn=branches.find(b=>b.name&&(b.name===brName||b.name.includes(brName)||brName.includes(b.name)));
+  const ph=normPhone(brn?.manager_phone||'');
+  const items=returns_data.filter(r=>{
+    const rb=String(r.branch||r.branches?.name||'').trim();
+    return rb===brName;
+  });
+  if(!items.length){toast('لا توجد طرود لهذا الفرع','w');return;}
+  const listTxt=items.map((r,i)=>{
+    const tc=r.shipments?.tracking_code||'—';
+    const days=Number(r.delay_days||0)||0;
+    return `${i+1}. 📦 ${tc} — ${r.shipments?.customer_name||'—'} (${days} يوم)`;
+  }).join('\n');
+  const msg=`السلام عليكم 👋\n🕊️ ${CFG.company}\n\nتقرير طرود في الشركة — فرع ${brName}\nالعدد: ${items.length} طرد\n\n${listTxt}\n\n⚠️ يرجى متابعة هذه الطرود\n— ${CFG.company}`;
+  openWAUrl(ph,msg);
+}
+
+// Event delegation for returns contact results & notes
+document.addEventListener('change',e=>{
+  if(e.target.classList.contains('rcr-sel')){
+    const sid=e.target.dataset.rsid;
+    const val=e.target.value;
+    const noteEl=document.querySelector(`.rnote-inp[data-rsid="${sid}"]`);
+    const note=noteEl?.value||'';
+    saveCR(sid,val,note);
+  }
+});
+document.addEventListener('blur',e=>{
+  if(e.target.classList.contains('rnote-inp')){
+    const sid=e.target.dataset.rsid;
+    const note=e.target.value;
+    const selEl=document.querySelector(`.rcr-sel[data-rsid="${sid}"]`);
+    const result=selEl?.value||'';
+    saveCR(sid,result,note);
+  }
+},true);
+
 function openRetModal(sid){
   document.getElementById('ret-sid').value=sid;
   document.getElementById('ret-notes').value='';
