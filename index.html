@@ -1285,7 +1285,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       <button class="btn btn-ghost btn-sm" onclick="openApiFiltersDrawer()">⚙️ تصفية</button>
       <button class="btn btn-ghost btn-sm" onclick="resetAPIFilters();renderAPIShipments();" title="مسح الفلاتر">✕ مسح</button>
       <label class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:6px;cursor:pointer">
-        <input type="checkbox" id="a-show-processed" onchange="renderAPIShipments()">
+        <input type="checkbox" id="a-show-processed" checked onchange="renderAPIShipments()">
         إظهار المعالَجة
       </label>
     </div>
@@ -6844,12 +6844,14 @@ function renderAPIShipments(){
   const myName=CU?.name||'';
   const isEmployee=CU?.role==='employee';
   const showProcessed=!!document.getElementById('a-show-processed')?.checked;
+  const hasExplicitQuery=Boolean(q&&String(q).trim());
   let list=[...apiShipments];
   if(isEmployee){
     list=list.filter(s=>String(assignments[s.tracking_code]||'')===String(myName));
   }
   const forceShowProcessedForStatus=(fst==='returned'||fst==='delivered');
-  if(!showProcessed&&!forceShowProcessedForStatus){
+  // When user searches by code/text, do not hide processed rows.
+  if(!showProcessed&&!forceShowProcessedForStatus&&!hasExplicitQuery){
     list=list.filter(s=>!apiProcessedCodes.has(String(s.tracking_code||'')));
   }
 
