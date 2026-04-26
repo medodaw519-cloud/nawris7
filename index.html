@@ -1485,11 +1485,58 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
   <!-- ══ JANZOUR STORES MONITORING ══ -->
   <div class="page" id="tab-janzour">
     <div class="page-hdr">
-      <div class="page-title"><span class="page-title-accent"></span>متابعة متاجر جنزور</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <div>
+        <div class="page-title"><span class="page-title-accent"></span>متابعة متاجر جنزور</div>
+        <div style="font-size:11px;color:var(--mute);margin-top:4px">🏬 نفس بيانات <strong>طرود API</strong> — معروض هنا طُرود <strong>متاجر جنزور</strong> فقط</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end;max-width:100%">
         <span class="badge b-grn" id="j-cnt">0 طرد</span>
-        <button class="btn btn-pur btn-sm" onclick="refreshAppVersion()">🔄 تحديث النسخة</button>
-        <button class="btn btn-ghost btn-sm" onclick="gTab('api-shipments')">← طرود API الكاملة</button>
+        <button class="btn btn-pur btn-sm" onclick="fetchAPIShipments()">⬇️ جلب الآن</button>
+        <button class="btn btn-ghost btn-sm" onclick="renderJanzour();updateJanzourKPIs()" title="إعادة رسم الجدول والمؤشرات">↻ تحديث</button>
+        <button class="btn btn-wa btn-sm" onclick="bulkWA_Janzour()">💬 واتساب</button>
+        <button class="btn btn-gold btn-sm manager-only" type="button" onclick="janzourAssignPanelScroll()" title="انتقال لقسم التوزيع">👥 توزيع</button>
+        <button class="btn btn-pur btn-sm" onclick="refreshAppVersion()">🔄 نسخة</button>
+        <button class="btn btn-ghost btn-sm" onclick="gTab('shipments');setTimeout(function(){if(typeof switchUnifiedShipmentsSource==='function')switchUnifiedShipmentsSource('api')},100)">← الطرود</button>
+      </div>
+    </div>
+
+    <div class="card manager-only" id="j-assign-full-panel" style="display:block;border-right:3px solid var(--gold);margin-bottom:14px">
+      <div class="ctitle" style="margin-bottom:8px">👥 توزيع طُرود جنزور على الموظفين</div>
+      <p style="font-size:11px;color:var(--mute);margin:0 0 10px">الإسناد موحّد مع «طرود API» (نفس التعيينات). الإحصائيات هنا = طُرود <strong>متاجر جنزور</strong> فقط.</p>
+      <div id="j-assign-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:12px"></div>
+      <div style="border-top:1px solid var(--rim);padding-top:12px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--pale);margin-bottom:8px">⚡ التوزيع التلقائي (غير المسندة في جنزور فقط)</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <button class="btn btn-pur btn-sm" onclick="autoAssignJanzour('equal')">⚖️ توزيع متساوي</button>
+          <button class="btn btn-blu btn-sm" onclick="autoAssignJanzour('branch')">🏢 حسب الفرع</button>
+          <button class="btn btn-orn btn-sm" onclick="autoAssignJanzour('workload')">📊 حسب الحمل</button>
+          <button class="btn btn-red btn-sm" onclick="clearJanzourScopeAssignments()">🗑️ مسح تعيينات جنزور</button>
+        </div>
+        <div style="margin-top:8px">
+          <label style="font-size:11px;color:var(--mute)">توزيع على:</label>
+          <div id="j-assign-emp-checks" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:5px"></div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--rim);padding-top:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--pale);margin-bottom:8px">✋ التعيين اليدوي (للمحددين في جدول جنزور)</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="fi" id="j-manual-assign-emp" style="min-width:160px" onchange="updateJanzourManualLive()">
+            <option value="">اختر موظف...</option>
+          </select>
+          <span id="j-manual-assign-live" style="font-size:11px;color:var(--mute)">—</span>
+          <button class="btn btn-gold btn-sm" onclick="assignSelectedJanzour()">✅ تعيين المحددين</button>
+          <button class="btn btn-ghost btn-sm" onclick="unassignSelectedJanzour()">✕ إلغاء تعيين المحددين</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <select class="fi" id="j-janzour-branch-filter" style="min-width:180px">
+            <option value="">كل الفروع (حسب فلتر الجدول)</option>
+          </select>
+          <select class="fi" id="j-janzour-branch-emp" style="min-width:160px">
+            <option value="">اختر موظف...</option>
+          </select>
+          <button class="btn btn-pur btn-sm" onclick="bulkAssignFilteredJanzourBranch()">🏢 تعيين كل طُرود الفرع (في جنزور)</button>
+          <button class="btn btn-ghost btn-sm" onclick="bulkUnassignFilteredJanzourBranch()">✕ إلغاء تعيين طُرود الفرع</button>
+        </div>
       </div>
     </div>
 
@@ -1553,25 +1600,15 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
       المتاجر المرتبطة: <span id="j-store-count" style="color:var(--grn);font-weight:700">0</span> متجر من البيانات الثابتة
     </div>
     <p style="font-size:11px;color:var(--mute);margin:-4px 0 12px">📊 <strong>نسب ومعدلات التسليم</strong> (حسب المتجر والفرع والمندوب) متوفرة في تبويب <a href="#" onclick="gTab('janzour-rates');return false" style="color:var(--pur);font-weight:700">نسب ومعدلات جنزور</a>.</p>
-    <div class="card" style="margin-bottom:10px;border-right:3px solid var(--gold)">
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select class="fi" id="j-assign-emp" onchange="updateJAssignLiveCounter()" style="min-width:170px">
-          <option value="">اختر موظف...</option>
-        </select>
-        <span id="j-assign-live" style="font-size:11px;color:var(--mute)">—</span>
-        <button class="btn btn-gold btn-sm" onclick="assignSelectedJanzour()">✅ تعيين المحددين</button>
-        <button class="btn btn-ghost btn-sm" onclick="unassignSelectedJanzour()">✕ إلغاء تعيين المحددين</button>
+    <div class="card" style="border-right:3px solid var(--pur);margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div id="j-api-status-dot" class="sync-dot" style="width:10px;height:10px;flex-shrink:0"></div>
+          <span id="j-api-conn-txt" style="font-size:12px;color:var(--pale)">—</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="gTab('shipments');setTimeout(function(){if(typeof switchUnifiedShipmentsSource==='function')switchUnifiedShipmentsSource('api')},100)">⚙️ إعدادات الربط والتوكن</button>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
-        <select class="fi" id="j-assign-branch" style="min-width:170px">
-          <option value="">كل الفروع (حسب الفلتر)</option>
-        </select>
-        <select class="fi" id="j-assign-branch-emp" style="min-width:170px">
-          <option value="">اختر موظف...</option>
-        </select>
-        <button class="btn btn-pur btn-sm" onclick="bulkAssignFilteredJanzourBranch()">🏢 تعيين كل طرد الفرع</button>
-        <button class="btn btn-ghost btn-sm" onclick="bulkUnassignFilteredJanzourBranch()">✕ إلغاء تعيين كل طرد الفرع</button>
-      </div>
+      <div id="j-api-last-msg" style="font-size:11px;color:var(--mute);margin-top:6px">الجلب من شريط الأعلى؛ الربط يُعدّ من <strong>متابعة الطرود</strong> (نفس الرابط/التوكن)</div>
     </div>
 
     <!-- Table -->
@@ -1585,7 +1622,7 @@ body:has(#staging-banner) #login-screen{padding-top:32px}
           <th title="تسجيل تسليم + تم الحل + مزامنة المؤشرات">تم التسليم</th><th>حفظ</th>
           <th>واتساب</th>
         </tr></thead>
-        <tbody id="j-tbody"><tr><td colspan="15" style="text-align:center;padding:32px;color:var(--mute)">اضغط "جلب الآن" في طرود API لتحميل البيانات</td></tr></tbody>
+        <tbody id="j-tbody"><tr><td colspan="15" style="text-align:center;padding:32px;color:var(--mute)">اضغط <strong>جلب الآن</strong> في الأعلى، أو اربط الـ API من <strong>متابعة الطرود</strong></td></tr></tbody>
       </table>
     </div>
     <div style="padding:10px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -8144,44 +8181,224 @@ function getJanzourAssignCounts(){
   });
   return counts;
 }
-function updateJAssignLiveCounter(){
-  const el=document.getElementById('j-assign-live'); if(!el)return;
-  const emp=document.getElementById('j-assign-emp')?.value||'';
+function updateJanzourManualLive(){
+  const el=document.getElementById('j-manual-assign-live');
+  if(!el)return;
+  const emp=document.getElementById('j-manual-assign-emp')?.value||'';
   if(!emp){el.textContent='—';return;}
   const c=getJanzourAssignCounts();
-  el.textContent=`${emp} (${c[emp]||0} طرد)`;
+  el.textContent=`${emp} (${c[emp]||0} طرد في جنزور)`;
+}
+function janzourAssignPanelScroll(){
+  const p=document.getElementById('j-assign-full-panel');
+  if(p)p.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function updateJanzourConnectionMirror(){
+  const st=document.getElementById('api-conn-status');
+  const dot=document.getElementById('api-conn-dot');
+  const st2=document.getElementById('j-api-conn-txt');
+  const d2=document.getElementById('j-api-status-dot');
+  const m=document.getElementById('j-api-last-msg');
+  const api2=document.getElementById('api2-status');
+  if(st2&&st)st2.textContent=st.textContent||'—';
+  if(d2&&dot)d2.className=dot.className;
+  if(m&&api2){
+    const t=(api2.textContent||'').trim();
+    if(t)m.textContent=t;
+  }
 }
 function updateJanzourAssignControls(){
-  const emps=Object.values(USERS).filter(u=>u.status!=='inactive'&&u.role!=='manager'&&u.name).map(u=>u.name);
-  const counts=getJanzourAssignCounts();
-  const fill=(id,placeholder)=>{
-    const sel=document.getElementById(id); if(!sel)return;
-    const prev=sel.value;
-    sel.innerHTML=`<option value="">${placeholder}</option>`+emps.map(n=>`<option value="${String(n).replace(/"/g,'&quot;')}">${n} (${counts[n]||0})</option>`).join('');
-    if(prev&&emps.includes(prev))sel.value=prev;
-  };
-  fill('j-assign-emp','اختر موظف...');
-  fill('j-assign-branch-emp','اختر موظف...');
-  const brSel=document.getElementById('j-assign-branch');
-  if(brSel){
-    const prev=brSel.value;
-    const branches=[...new Set(jFilteredData.map(s=>String(s.current_branch||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));
-    brSel.innerHTML='<option value="">كل الفروع (حسب الفلتر)</option>'+branches.map(b=>`<option value="${b.replace(/"/g,'&quot;')}">${b}</option>`).join('');
-    if(prev&&branches.includes(prev))brSel.value=prev;
+  updateJanzourConnectionMirror();
+  renderJanzourAssignStats();
+  refreshJanzourAssignPanelEmps();
+}
+function renderJanzourAssignStats(){
+  const statsEl=document.getElementById('j-assign-stats');
+  if(!statsEl||CU?.role!=='manager')return;
+  const a=getAPIAssignments();
+  const jList=janzourShipments||[];
+  const empMap={};
+  Object.entries(USERS).forEach(([,u])=>{
+    if(u.role==='manager')return;
+    empMap[u.name]={name:u.name,total:0,crit:0,done:0};
+  });
+  jList.forEach(s=>{
+    const emp=a[s.tracking_code];
+    if(!emp||!isAssignableEmployeeName(emp))return;
+    if(!empMap[emp])empMap[emp]={name:emp,total:0,crit:0,done:0};
+    empMap[emp].total++;
+    if(cls(s.delay_days)==='critical')empMap[emp].crit++;
+    const cr=getCR(s.id);
+    if(cr.result==='solved'||cr.result==='contacted')empMap[emp].done++;
+  });
+  const unassigned=jList.filter(s=>!a[s.tracking_code]).length;
+  const rows=Object.values(empMap).filter(e=>e.total>0&&isAssignableEmployeeName(e.name)).sort((a,b)=>b.total-a.total);
+  statsEl.innerHTML=`
+    <div style="background:var(--bg4);border-radius:var(--r2);padding:10px;text-align:center;border:1px solid var(--rim)">
+      <div style="font-size:18px;font-weight:900;color:var(--mute);font-family:var(--mono)">${unassigned}</div>
+      <div style="font-size:10px;color:var(--dim)">⚠️ غير مسندة (جنزور)</div>
+    </div>
+    ${rows.map(e=>{
+      const pct=e.total?Math.round(e.done/e.total*100):0;
+      return`<div style="background:var(--bg4);border-radius:var(--r2);padding:10px;border:1px solid var(--rim)">
+        <div style="font-size:12px;font-weight:700;color:var(--white);margin-bottom:5px">${e.name}</div>
+        <div style="font-size:18px;font-weight:900;color:var(--pur);font-family:var(--mono)">${e.total}</div>
+        <div style="font-size:10px;color:var(--mute);margin-bottom:4px">${e.crit>0?`<span style="color:var(--red)">🔴 ${e.crit} حرج</span> · `:''} ${pct}% منجز</div>
+        <div style="background:var(--bg5);border-radius:99px;height:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--grn);border-radius:99px"></div></div>
+      </div>`;
+    }).join('')}`;
+}
+function getJanzourSelectedParcelsFromCheckbox(){
+  const out=[];
+  jChecked.forEach(sid=>{
+    const s=apiShipments.find(x=>String(x.id)===String(sid));
+    if(s&&janzourShipments&&janzourShipments.some(j=>String(j.id)===String(sid)||j.tracking_code===s.tracking_code))out.push(s);
+  });
+  return out;
+}
+function refreshJanzourAssignPanelEmps(){
+  if(CU?.role!=='manager')return;
+  const jList=janzourShipments||[];
+  const emps=Object.values(USERS).filter(u=>u.status!=='inactive'&&u.role!=='manager'&&u.name);
+  if(!emps.length){
+    const checksEl=document.getElementById('j-assign-emp-checks');
+    if(checksEl)checksEl.innerHTML='<span style="color:var(--mute);font-size:11px">لا يوجد موظفون</span>';
+    return;
   }
-  updateJAssignLiveCounter();
+  const counts=getJanzourAssignCounts();
+  const selectedParcels=getJanzourSelectedParcelsFromCheckbox().length
+    ?getJanzourSelectedParcelsFromCheckbox()
+    :[...(jFilteredData||[])].filter(s=>jList.some(j=>j.tracking_code===s.tracking_code));
+  const selectableEmps=emps.filter(u=>selectedParcels.length===0||selectedParcels.every(p=>canAssignParcelToEmployee(p,u.name)));
+  const isMob=window.innerWidth<=640;
+  const checksEl=document.getElementById('j-assign-emp-checks');
+  if(checksEl)checksEl.innerHTML=emps.map(u=>{
+    const disabled=!selectableEmps.some(se=>se.name===u.name);
+    return`
+    <label style="display:flex;align-items:center;gap:8px;background:var(--bg4);border:1px solid var(--rim);border-radius:var(--r2);padding:${isMob?'12px 14px':'7px 12px'};cursor:pointer;min-height:${isMob?'48px':'auto'}">
+      <input type="checkbox" value="${u.name}" ${disabled?'disabled':''} style="accent-color:var(--pur);width:${isMob?'18px':'13px'};height:${isMob?'18px':'13px'};flex-shrink:0">
+      <span style="font-size:${isMob?'14px':'12px'};font-weight:700;color:var(--white)">${u.name}</span>
+      <span style="font-size:11px;font-family:var(--mono);color:${disabled?'var(--red)':'var(--pur)'};margin-right:auto">${disabled?'غير متاح':(' '+(counts[u.name]||0)+' طرد')}</span>
+    </label>`;
+  }).join('');
+  const manEl=document.getElementById('j-manual-assign-emp');
+  if(manEl)manEl.innerHTML='<option value="">اختر موظف...</option>'+selectableEmps.map(u=>`<option value="${u.name}">${u.name} (${counts[u.name]||0})</option>`).join('');
+  const brEmpEl=document.getElementById('j-janzour-branch-emp');
+  if(brEmpEl)brEmpEl.innerHTML='<option value="">اختر موظف...</option>'+selectableEmps.map(u=>`<option value="${u.name}">${u.name} (${counts[u.name]||0})</option>`).join('');
+  const brEl=document.getElementById('j-janzour-branch-filter');
+  if(brEl){
+    const prev=brEl.value;
+    const branches=[...new Set((jFilteredData||[]).map(s=>String(s.current_branch||'').trim()).filter(Boolean))].sort((x,y)=>x.localeCompare(y,'ar'));
+    brEl.innerHTML='<option value="">كل الفروع (حسب فلتر الجدول)</option>'+branches.map(b=>`<option value="${b.replace(/"/g,'&quot;')}">${b}</option>`).join('');
+    if(prev&&branches.includes(prev))brEl.value=prev;
+  }
+  updateJanzourManualLive();
+}
+function autoAssignJanzour(method){
+  if(CU?.role!=='manager'){toast('التوزيع التلقائي للمدير فقط','w');return;}
+  const empChecks=document.querySelectorAll('#j-assign-emp-checks input:checked');
+  let emps=empChecks.length>0
+    ?[...empChecks].map(c=>c.value).filter(n=>isAssignableEmployeeName(n))
+    :getActiveEmployees();
+  if(!emps.length){toast('حدد موظفاً في خانات التوزيع أو أضف موظفين','w');return;}
+  const a=_getAssignmentsRaw();
+  const flat=getAPIAssignments();
+  const jSet=new Set((janzourShipments||[]).map(s=>s.tracking_code).filter(Boolean));
+  const unassigned=(janzourShipments||[]).filter(s=>jSet.has(s.tracking_code)&&!flat[s.tracking_code]);
+  if(!unassigned.length){toast('لا توجد طُرود جنزور غير مسندة','w');return;}
+  const now=Date.now();
+  if(method==='equal'){
+    unassigned.forEach((s,i)=>{a[s.tracking_code]={emp:emps[i%emps.length],at:now};});
+  }else if(method==='branch'){
+    const branchMap={};
+    (janzourShipments||[]).forEach(s=>{
+      if(!jSet.has(s.tracking_code))return;
+      const br=s.current_branch||'أخرى';
+      if(!branchMap[br])branchMap[br]=[];
+      branchMap[br].push(s);
+    });
+    const branches=Object.keys(branchMap);
+    branches.forEach((br,bi)=>{
+      const emp=emps[bi%emps.length];
+      branchMap[br].forEach(s=>{if(!flat[s.tracking_code])a[s.tracking_code]={emp,at:now};});
+    });
+  }else if(method==='workload'){
+    const counts={};
+    emps.forEach(e=>{counts[e]=0;});
+    janzourShipments.forEach(s=>{
+      if(!jSet.has(s.tracking_code))return;
+      const e=flat[s.tracking_code];
+      if(e&&counts[e]!==undefined)counts[e]++;
+    });
+    unassigned.forEach(s=>{
+      const emp=emps.reduce((x,y)=>counts[x]<=counts[y]?x:y);
+      a[s.tracking_code]={emp,at:now};
+      counts[emp]++;
+    });
+  }
+  saveAPIAssignments(a);
+  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();refreshJanzourAssignPanelEmps();
+  toast(`✅ تم توزيع ${unassigned.length} طرد (جنزور)`,`s`);
+}
+function clearJanzourScopeAssignments(){
+  if(CU?.role!=='manager'){toast('للمدير فقط','w');return;}
+  if(!confirm('مسح كل التعيينات لطُرود جنزور فقط؟ (لن تُؤثر على طُرود خارج نطاق جنزور)'))return;
+  const a=_getAssignmentsRaw();
+  const jCodes=new Set((janzourShipments||[]).map(s=>s.tracking_code).filter(Boolean));
+  let n=0;
+  for(const code of[...jCodes]){
+    if(a[code]){delete a[code];n++;}
+  }
+  saveAPIAssignments(a);
+  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();refreshJanzourAssignPanelEmps();
+  toast(`🗑️ أُلغي ${n} تعيين (نطاق جنزور)`,`s`);
+}
+async function bulkWA_Janzour(){
+  if(!jChecked.size){toast('حدد طروداً في جدول جنزور','w');return;}
+  const selected=[...jChecked]
+    .map(sid=>apiShipments.find(s=>String(s.id)===String(sid)))
+    .filter(s=>s&&(janzourShipments||[]).some(j=>String(j.id)===String(s?.id)));
+  if(!selected.length){toast('لا توجد طرود','w');return;}
+  const captains=[...new Set(selected.map(s=>normalizeIdentityText(s.captain||'')).filter(Boolean))];
+  if(captains.length!==1){
+    toast('لازم يكون التحديد لنفس المندوب','e');
+    return;
+  }
+  const captainKey=captains[0];
+  const captainLabel=String(selected.find(s=>normalizeIdentityText(s.captain||'')===captainKey)?.captain||selected[0].captain||'').trim()||'المندوب';
+  const phoneFromSelected=selected.filter(s=>normalizeIdentityText(s.captain||'')===captainKey).map(s=>normPhone(s.captain_phone||s.driver_phone||'')).find(Boolean)||'';
+  const phoneFromDrivers=(drivers_db||[]).filter(d=>normalizeIdentityText(d?.name||'')===captainKey).map(d=>normPhone(d?.phone||'')).find(Boolean)||'';
+  const captainPhone=phoneFromSelected||phoneFromDrivers||'';
+  if(!captainPhone){
+    toast(`لا يوجد رقم للمندوب: ${captainLabel}`,`e`);
+    return;
+  }
+  const msg=buildSelectedStatusMessage(captainLabel,selected);
+  openWAUrl(captainPhone,msg);
+  let updated=0;
+  for(const s of selected){
+    const prevNote=getCR(s.id).note||'';
+    if(await saveCR(s.id,'contacted',prevNote))updated++;
+  }
+  renderJanzour();
+  if(typeof renderAPIShipments==='function')renderAPIShipments();
+  toast(`تم فتح واتساب + تحديث ${updated} سجل`,'s');
 }
 function assignSelectedJanzour(){
-  const emp=document.getElementById('j-assign-emp')?.value||'';
+  const emp=document.getElementById('j-manual-assign-emp')?.value||'';
   if(!emp){toast('اختر موظفاً أولاً','w');return;}
   if(isManagerName(emp)){toast('لا يُسمح بإسناد الطرود إلى المدير','e');return;}
-  const a=_getAssignmentsRaw();const now=Date.now();let count=0;
+  const a=_getAssignmentsRaw();const now=Date.now();let count=0,blocked=0;
   jChecked.forEach(id=>{
     const s=apiShipments.find(x=>String(x.id)===String(id));
-    if(s){a[s.tracking_code]={emp,at:now};count++;}
+    if(s){
+      if(!canAssignParcelToEmployee(s,emp)){blocked++;return;}
+      a[s.tracking_code]={emp,at:now};count++;
+    }
   });
   saveAPIAssignments(a);
-  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();
+  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();refreshJanzourAssignPanelEmps();
+  if(blocked>0)toast(`⚠️ تم منع ${blocked} طرد (فرع الموظف)`,'w');
   toast(`✅ تم تعيين ${count} طرد في جنزور إلى ${emp}`,'s');
 }
 function unassignSelectedJanzour(){
@@ -8191,24 +8408,29 @@ function unassignSelectedJanzour(){
     if(s&&a[s.tracking_code]){delete a[s.tracking_code];count++;}
   });
   saveAPIAssignments(a);
-  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();
+  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();refreshJanzourAssignPanelEmps();
   toast(`تم إلغاء تعيين ${count} طرد`,'s');
 }
 function bulkAssignFilteredJanzourBranch(){
-  const branch=document.getElementById('j-assign-branch')?.value||'';
-  const emp=document.getElementById('j-assign-branch-emp')?.value||'';
+  const branch=document.getElementById('j-janzour-branch-filter')?.value||'';
+  const emp=document.getElementById('j-janzour-branch-emp')?.value||'';
   if(!emp){toast('اختر موظفاً أولاً','w');return;}
   if(isManagerName(emp)){toast('لا يُسمح بإسناد الطرود إلى المدير','e');return;}
   const targets=jFilteredData.filter(s=>!branch||String(s.current_branch||'').trim()===branch);
   if(!targets.length){toast('لا توجد طرود مطابقة','w');return;}
   const a=_getAssignmentsRaw();const now=Date.now();
-  targets.forEach(s=>{a[s.tracking_code]={emp,at:now};});
+  let ok=0,blocked=0;
+  targets.forEach(s=>{
+    if(!canAssignParcelToEmployee(s,emp)){blocked++;return;}
+    a[s.tracking_code]={emp,at:now};ok++;
+  });
   saveAPIAssignments(a);
-  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();
-  toast(`✅ تم تعيين ${targets.length} طرد من ${branch||'كل الفروع'} إلى ${emp}`,'s');
+  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();refreshJanzourAssignPanelEmps();
+  if(blocked>0)toast(`⚠️ رُفض ${blocked} طرد (فرع الموظف)`,'w');
+  toast(`✅ تم تعيين ${ok} طرد من ${branch||'كل الفروع'} إلى ${emp}`,'s');
 }
 function bulkUnassignFilteredJanzourBranch(){
-  const branch=document.getElementById('j-assign-branch')?.value||'';
+  const branch=document.getElementById('j-janzour-branch-filter')?.value||'';
   const targets=jFilteredData.filter(s=>!branch||String(s.current_branch||'').trim()===branch);
   if(!targets.length){toast('لا توجد طرود مطابقة','w');return;}
   const a=_getAssignmentsRaw();let count=0;
@@ -8220,7 +8442,7 @@ function bulkUnassignFilteredJanzourBranch(){
   });
   if(!count){toast('لا توجد تعيينات لإلغائها','w');return;}
   saveAPIAssignments(a);
-  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();
+  renderJanzour();renderAPIShipments();renderAssignStats();refreshAssignPanelEmps();refreshJanzourAssignPanelEmps();
   toast(`✕ تم إلغاء تعيين ${count} طرد من ${branch||'كل الفروع'}`,'s');
 }
 
