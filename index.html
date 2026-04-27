@@ -6296,7 +6296,6 @@ async function renderStaff(){
     }
   }catch(_){}
 
-  const users=Object.entries(USERS);
   const crLabels={delivered:'✅ تم التسليم',solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
   const assignments=getAPIAssignments();
 
@@ -6304,11 +6303,13 @@ async function renderStaff(){
   const apiRows=apiShipments.map(s=>{
     const cr=getCR(s.id);
     const effectiveResult=isProcessedShipmentForStaff(s)?'solved':(cr.result||'');
+    const rawBy=String(cr.by||(assignments[s.tracking_code]||'')).trim();
+    const canon=resolveCanonicalActiveEmployeeName(rawBy)||resolveCanonicalActiveEmployeeName(assignments[s.tracking_code]||'');
     return{
       code:s.tracking_code||'—',
       crResult:effectiveResult,
       crNote:cr.note||'',
-      crBy:cr.by||(assignments[s.tracking_code]||'')||'—',
+      crBy:canon||'—',
       src:'API'
     };
   });
@@ -6326,7 +6327,7 @@ async function renderStaff(){
     code:String(r.tracking_code||'').trim()||'—',
     crResult:r.result||'',
     crNote:r.note||'',
-    crBy:r.updated_by||'—',
+    crBy:resolveCanonicalActiveEmployeeName(r.updated_by)||'—',
     src:'API'
   }));
   if(todayCR.length)packageRows=packageRows.concat(todayCR);
@@ -6357,11 +6358,14 @@ async function renderStaff(){
 
   // Per-employee stats + shipment list
   const empStats={};
-  users.forEach(([uname,u])=>{empStats[u.name]={name:u.name,role:u.role,followed:0,solved:0,contacted:0,no_answer:0,pending:0,items:[]};});
+  Object.entries(USERS).forEach(([uname,u])=>{
+    if(!u||u.status==='inactive')return;
+    empStats[u.name]={name:u.name,role:u.role,followed:0,solved:0,contacted:0,no_answer:0,pending:0,items:[]};
+  });
   packageRows.forEach(r=>{
     if(!r.crBy||r.crBy==='—')return;
     const name=r.crBy;
-    if(!empStats[name])empStats[name]={name,role:'employee',followed:0,solved:0,contacted:0,no_answer:0,pending:0,items:[]};
+    if(!empStats[name])return;
     if(r.crResult){
       empStats[name].followed++;
       if(r.crResult==='solved')empStats[name].solved++;
@@ -6377,7 +6381,7 @@ async function renderStaff(){
   (Array.isArray(contact_results_db)?contact_results_db:[]).forEach(r=>{
     const ts=String(r.updated_at||r.created_at||'').trim();
     if(!ts||!ts.startsWith(monthKey))return;
-    const by=String(r.updated_by||'').trim();
+    const by=resolveCanonicalActiveEmployeeName(r.updated_by);
     if(!by)return;
     if(String(r.result||'')!=='contacted')return;
     liveMonthlyContacted[by]=Number(liveMonthlyContacted[by]||0)+1;
@@ -6425,8 +6429,11 @@ async function renderStaff(){
     let leader=null;
     if(serverStaffBoard&&serverStaffBoard.top&&Number(serverStaffBoard.top.contacted||0)>0){
       const t=serverStaffBoard.top;
-      const full=rows.find(x=>x.name===t.name);
-      leader={name:t.name,monthlyContacted:Number(t.contacted||0),solved:Number(t.resolved||0),role:full?full.role:'employee'};
+      const canon=resolveCanonicalActiveEmployeeName(t.name);
+      if(canon){
+        const full=rows.find(x=>x.name===canon);
+        leader={name:canon,monthlyContacted:Number(t.contacted||0),solved:Number(t.resolved||0),role:full?full.role:'employee'};
+      }
     }
     if(!leader)leader=rows.find(r=>r.monthlyContacted>0&&r.role!=='manager')||rows.find(r=>r.monthlyContacted>0)||null;
     if(!leader){
@@ -6559,6 +6566,17 @@ async function renderStaff(){
 // STAFF COMPLETE SHIPMENTS TABLE
 // ══════════════════════════════════════════
 function normEmpName(n){return String(n||'').replace(/\s+/g,' ').trim();}
+/** يطابق اسم المتابِع من السجلات مع الاسم في USERS (مسافات/تطبيع) ويُرجع null للمحذوفين أو غير الموجودين */
+function resolveCanonicalActiveEmployeeName(n){
+  const raw=String(n||'').trim();
+  if(!raw||raw==='—')return null;
+  const norm=normEmpName(raw);
+  for(const [,u] of Object.entries(USERS||{})){
+    if(!u||u.status==='inactive')continue;
+    if(normEmpName(u.name)===norm)return u.name;
+  }
+  return null;
+}
 
 function renderStaffShipments(){
   const tbody=document.getElementById('sf-tbody');
@@ -6615,11 +6633,11 @@ function renderStaffShipments(){
     const prev=empSel.value;
     while(empSel.options.length>1)empSel.remove(1);
     const names=new Set();
-    shipments.forEach(s=>{const cr=getCR(s.id);if(cr.by&&cr.by!=='—')names.add(cr.by);});
-    apiShipments.forEach(s=>{const cr=getCR(s.id);const e=cr.by||(assignments[s.tracking_code]||'');if(e&&e!=='—')names.add(e);});
-    Object.values(USERS).forEach(u=>names.add(u.name));
-    names.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;empSel.appendChild(o);});
-    if(prev)empSel.value=prev;
+    Object.values(USERS).filter(u=>u&&u.status!=='inactive').forEach(u=>names.add(u.name));
+    shipments.forEach(s=>{const c=resolveCanonicalActiveEmployeeName(getCR(s.id).by);if(c)names.add(c);});
+    apiShipments.forEach(s=>{const c=resolveCanonicalActiveEmployeeName(getCR(s.id).by||(assignments[s.tracking_code]||''));if(c)names.add(c);});
+    [...names].sort((a,b)=>a.localeCompare(b,'ar')).forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;empSel.appendChild(o);});
+    if(prev&&[...names].includes(prev))empSel.value=prev;
   }
 
   const crLabels={delivered:'✅ تم التسليم',solved:'✅ تم الحل',contacted:'📞 تم التواصل',no_answer:'📵 لا يرد',pending:'⏳ قيد المتابعة'};
@@ -6628,7 +6646,8 @@ function renderStaffShipments(){
   // ── Source 1: API shipments ──
   const apiList=apiShipments.map(s=>{
     const cr=getCR(s.id); // s.id = 'api_'+code
-    const emp=cr.by||(assignments[s.tracking_code]||'');
+    const raw=cr.by||(assignments[s.tracking_code]||'');
+    const emp=resolveCanonicalActiveEmployeeName(raw)||resolveCanonicalActiveEmployeeName(assignments[s.tracking_code]||'')||'—';
     return{
       _sid:String(s.id),
       code:s.tracking_code||'—',
@@ -6639,7 +6658,7 @@ function renderStaffShipments(){
       delay:s.delay_days??0,
       crResult:cr.result||'',
       crNote:cr.note||'',
-      crBy:emp||'—',
+      crBy:emp,
       src:'API'
     };
   });
@@ -6647,6 +6666,7 @@ function renderStaffShipments(){
   // ── Source 2: Supabase shipments ──
   const sbList=shipments.map(s=>{
     const cr=getCR(s.id); // s.id = integer
+    const emp=resolveCanonicalActiveEmployeeName(cr.by)||'—';
     return{
       _sid:String(s.id),
       code:s.tracking_code||'—',
@@ -6657,7 +6677,7 @@ function renderStaffShipments(){
       delay:s.delay_days??0,
       crResult:cr.result||'',
       crNote:cr.note||'',
-      crBy:cr.by||'—',
+      crBy:emp,
       src:'DB'
     };
   });
