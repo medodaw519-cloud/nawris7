@@ -6372,8 +6372,9 @@ async function renderStaff(){
       else if(r.crResult==='contacted')empStats[name].contacted++;
       else if(r.crResult==='no_answer')empStats[name].no_answer++;
       else if(r.crResult==='pending')empStats[name].pending++;
+      // فقط الطرود ذات نتيجة فعلية تُدرج في القائمة المنسدلة (لا تكرار آلاف كود بلا نتيجة)
+      empStats[name].items.push({code:r.code||'—',result:r.crResult,note:r.crNote||'',src:r.src||''});
     }
-    empStats[name].items.push({code:r.code||'—',result:r.crResult||'',note:r.crNote||'',src:r.src||''});
   });
   // Build strictly cumulative monthly contacted counts (never decrement within month).
   const monthKey=currentMonthKey();
@@ -6403,13 +6404,15 @@ async function renderStaff(){
     tbody.innerHTML=rows.filter(r=>r.followed>0).map(r=>{
       const pct=combinedTotal?Math.round(r.followed/combinedTotal*100):0;
       const pctColor=pct>70?'var(--grn)':pct>30?'var(--gold)':'var(--red)';
-      const codesHtml=r.items.slice(0,50).map(it=>{
-        const rc=it.result==='solved'?'var(--grn)':it.result==='contacted'?'var(--blu)':it.result==='no_answer'?'var(--red)':it.result==='pending'?'var(--gold)':'var(--mute)';
+      const codesHtml=r.items.slice(0,200).map(it=>{
+        const st=it.result||'';
+        const rc=(st==='solved'||st==='delivered')?'var(--grn)':st==='contacted'?'var(--blu)':st==='no_answer'?'var(--red)':st==='pending'?'var(--gold)':'var(--mute)';
+        const lbl=crLabels[st]||(st?`(${st})`:'—');
         const noteStr=it.note?` — <span style="color:var(--pale)">${it.note}</span>`:'';
         const srcBadge=it.src==='API'
           ?'<span style="font-size:9px;color:var(--pur);margin-inline:4px">[API]</span>'
           :'<span style="font-size:9px;color:var(--blu);margin-inline:4px">[DB]</span>';
-        return`<div style="font-size:10px;padding:2px 0;border-bottom:1px solid var(--rim)">${srcBadge}<span style="font-size:10px">${backofficeOrderLinkHtml(it.code)}</span> <span style="color:${rc}">${crLabels[it.result]||'—'}</span>${noteStr}</div>`;
+        return`<div style="font-size:10px;padding:2px 0;border-bottom:1px solid var(--rim)">${srcBadge}<span style="font-size:10px">${backofficeOrderLinkHtml(it.code)}</span> <span style="color:${rc}">${lbl}</span>${noteStr}</div>`;
       }).join('');
       return`<tr>
         <td><strong>${r.name}</strong><div style="font-size:10px;color:var(--dim)">${r.role==='manager'?'مدير':'موظف'}</div></td>
@@ -6420,7 +6423,7 @@ async function renderStaff(){
         <td style="color:var(--gold);font-weight:700">${r.pending}</td>
         <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;background:var(--bg5);border-radius:99px;height:6px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${pctColor};border-radius:99px"></div></div><span style="font-size:11px;font-weight:700;color:${pctColor};font-family:var(--mono)">${pct}%</span></div></td>
       </tr>
-      <tr><td colspan="7" style="padding:4px 12px;background:var(--bg2)"><details><summary style="cursor:pointer;font-size:11px;color:var(--pale)">📋 عرض الأكواد (${r.items.length})</summary><div style="max-height:200px;overflow-y:auto;margin-top:6px">${codesHtml||'<div style="color:var(--mute);font-size:11px">لا أكواد</div>'}</div></details></td></tr>`;
+      <tr><td colspan="7" style="padding:4px 12px;background:var(--bg2)"><details><summary style="cursor:pointer;font-size:11px;color:var(--pale)">📋 عرض الطرود المتابعة (${r.items.length})</summary><div style="max-height:280px;overflow-y:auto;margin-top:6px">${codesHtml||'<div style="color:var(--mute);font-size:11px">لا توجد طُرود بسجل متابعة</div>'}</div></details></td></tr>`;
     }).join('');
   }
   // Top performer of current month (server totals preferred when available)
